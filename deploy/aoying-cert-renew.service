@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew Aoying short-lived IP certificate
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/aoying-monitor/certbot-venv/bin/certbot renew --quiet --deploy-hook /usr/local/sbin/aoying-cert-reload
