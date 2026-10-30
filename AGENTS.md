@@ -6,3 +6,6 @@
 所有密码、令牌、session、数据库、备份和运行日志不得提交仓库。
 禁止自动下单。AI 未授权前不向外部模型发送监控原文。
 新项目仅在本目录操作；旧项目只读参考。服务器新服务使用独立目录、端口与数据。
+
+## GSD工作流
+正式需求/路线图/状态以.planning/PROJECT.md、REQUIREMENTS.md、ROADMAP.md、STATE.md为准。docs/MASTER-PLAN.md保留历史参考，不独立演化第二套路线图。用户选择每阶段方案确认后执行；允许研究、规划和验证子代理，执行阶段串行。设备基准：Redmi K50 Android14、OS2.0.10.0.ULNCNXM。

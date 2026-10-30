@@ -18,7 +18,10 @@
 
 ## 文档
 
-- [整体规划](docs/MASTER-PLAN.md)
+- [GSD项目](.planning/PROJECT.md)
+- [需求清单](.planning/REQUIREMENTS.md)
+- [路线图](.planning/ROADMAP.md)
+- [当前状态](.planning/STATE.md)
 - [第一阶段验收](docs/P1-VALIDATION.md)
 - [当前进度](docs/STATUS.md)
 
