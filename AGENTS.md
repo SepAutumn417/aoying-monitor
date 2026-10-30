@@ -9,3 +9,5 @@
 
 ## GSD工作流
 正式需求/路线图/状态以.planning/PROJECT.md、REQUIREMENTS.md、ROADMAP.md、STATE.md为准。docs/MASTER-PLAN.md保留历史参考，不独立演化第二套路线图。用户选择每阶段方案确认后执行；允许研究、规划和验证子代理，执行阶段串行。设备基准：Redmi K50 Android14、OS2.0.10.0.ULNCNXM。
+
+最新范围：v1先完成监控和Web；完成后再规划安卓App，不能继续执行旧的App优先阶段。

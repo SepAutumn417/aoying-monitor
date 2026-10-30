@@ -2,7 +2,7 @@
 gsd_state_version: '1.0'
 status: planning
 progress:
-  total_phases: 6
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -16,10 +16,10 @@ See: .planning/PROJECT.md (updated 2026-10-30)
 **Current focus:** GSD初始化与路线图待用户确认。
 
 ## Current Position
-Phase: 1 of 6 (自有App接收与响铃闭环)
+Phase: 1 of 5 (服务端与Web可用基础)
 Plan: 0 — 尚未创建可执行PLAN
 Status: Roadmap draft awaiting user approval
-Last activity: 2026-10-30 — 完成代码现状盘点、17条需求映射及安卓研究。
+Last activity: 2026-10-30 — 完成代码现状盘点、按最新需求改为15条Web优先需求，App延后。
 Progress: 0%
 
 ## Performance Metrics
@@ -31,7 +31,7 @@ Progress: 0%
 ### Pending Todos
 路线图确认后调用gsd-plan-phase 1；研究、编写执行计划、独立检查，再请用户确认阶段方案。
 ### Blockers/Concerns
-安卓构建工具链未就绪；服务类型、Doze和后台响铃须真机验证。Telegram新会话与样本、X/Fomo/OKX入口未提供。不影响首阶段合成测试。
+安卓工具链、Doze和声音验证移到后续App里程碑，不阻塞v1。Telegram新会话与样本、X/Fomo/OKX入口未提供。不影响首阶段合成测试。
 
 ## Session Continuity
 Last session: 2026-10-30
