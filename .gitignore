@@ -1,0 +1,13 @@
+/.env
+/.env.*
+!/.env.example
+/work/
+/data/
+/secrets/
+/backups/
+/logs/
+/.venv/
+__pycache__/
+*.pyc
+*.session
+*.session-journal
