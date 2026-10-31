@@ -17,11 +17,6 @@
   "plan_review": {
     "source_grounding": true
   },
-  "gates": {
-    "confirm_phases": true,
-    "confirm_roadmap": true,
-    "confirm_plan": true
-  },
   "ship": {
     "pr_body_sections": []
   },

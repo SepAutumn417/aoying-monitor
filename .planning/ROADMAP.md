@@ -19,7 +19,13 @@
 1. 登录退出与未授权访问测试通过；真实内容接入前安全基线就绪。
 2. 测试事件能在Web时间线和详情查看，重启保留且不重复。
 3. 监控状态、失败与无数据各有清晰显示；合成数据明确标注。
-**Plans**: TBD，阶段详细方案经用户确认后执行。
+**Plans**: 5份，详细规划已复审，待用户确认后依次执行。
+- [01-01：安全登录与空时间线](phases/01-web/01-01-PLAN.md)
+- [01-02：测试事件保存与列表详情](phases/01-web/01-02-PLAN.md)
+- [01-03：编辑版本、幂等与增量更新](phases/01-web/01-03-PLAN.md)
+- [01-04：来源状态、错误恢复与界面验收](phases/01-web/01-04-PLAN.md)
+- [01-05：独立部署、恢复与人工验收](phases/01-web/01-05-PLAN.md)
+顺序依赖：01 → 02 → 03 → 04 → 05。用户审阅入口：[详细方案](phases/01-web/01-PLAN-OVERVIEW.md)。
 
 ### Phase 2: Telegram真实监控与仓位变化
 **Goal**: 四话题采集和动态仓位差异在Web可用。
@@ -69,7 +75,7 @@ v2：自有安卓App、设备认证/回执、后台连接、声音和补收；�
 ## Progress
 | Phase | Plans Complete | Status | Completed |
 |---|---|---|---|
-| 1. 服务端与Web可用基础 | 0/TBD | Not started | - |
+| 1. 服务端与Web可用基础 | 0/5 | Plan reviewed; awaiting user approval | - |
 | 2. Telegram真实监控与仓位变化 | 0/TBD | Not started | - |
 | 3. X发言监控 | 0/TBD | Not started | - |
 | 4. Fomo/OKX与统一Web | 0/TBD | Not started | - |
