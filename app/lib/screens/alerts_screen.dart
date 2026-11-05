@@ -1,62 +1,141 @@
 import 'package:flutter/material.dart';
 
+import '../data/demo.dart';
 import '../theme.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
 
-class AlertsScreen extends StatelessWidget {
+class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
 
   @override
+  State<AlertsScreen> createState() => _AlertsScreenState();
+}
+
+class _AlertsScreenState extends State<AlertsScreen> {
+  String _level = '全部等级';
+
+  static const _levels = ['全部等级', '高', '中', '低'];
+
+  @override
   Widget build(BuildContext context) {
+    final rows = _level == '全部等级'
+        ? demoAlerts
+        : demoAlerts.where((a) => a.level == _level).toList();
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
-        const PageHeader(
-          eyebrow: 'ALERTS / 告警',
-          title: '告警与送达',
-          subtitle: 'Android 在线时走自建 WebSocket；App 离线或 30 秒未确认时，critical 事件降级到企业微信/邮件。',
+        PageHeader(
+          title: '提醒',
+          meta: '${rows.length} 条',
+          action: const DemoBadge(),
         ),
-        const SizedBox(height: 16),
+        FilterChipRow(
+          options: _levels,
+          value: _level,
+          onChanged: (value) => setState(() => _level = value),
+        ),
+        const SizedBox(height: 10),
         SectionCard(
+          padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text('最近告警', style: Theme.of(context).textTheme.titleMedium),
-                  const Spacer(),
-                  const Icon(Icons.notifications_off_outlined, size: 18, color: AppColors.mist),
-                ],
-              ),
-              const SizedBox(height: 14),
-              const EmptyState(
-                icon: Icons.notifications_none,
-                title: '还没有告警',
-                description: 'I3 接入仓位事件后，这里会显示每次提醒的通道、送达状态和确认时间。',
-              ),
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0)
+                  const Divider(height: 1, thickness: 1, color: AppColors.border),
+                _AlertRow(alert: rows[i]),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('送达通道', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 10),
-              const _ChannelRow(name: 'Android App', detail: '主通道 · WebSocket + 本地通知', state: '待 I1'),
-              const _ChannelRow(name: '企业微信', detail: '兜底 · critical 事件', state: '待配置'),
+              const _ChannelRow(name: 'Android App', detail: '主通道 · WebSocket + 本地通知', state: '未接入'),
+              const _ChannelRow(name: '企业微信', detail: '兜底 · 仅 critical', state: '待配置'),
               const _ChannelRow(name: '邮件', detail: '日报 / 严重告警', state: '待配置'),
-              const SizedBox(height: 8),
-              Text(
-                '告警去重与合并规则在 I3 实现，避免刷屏。',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AlertRow extends StatelessWidget {
+  const _AlertRow({required this.alert});
+
+  final DemoAlert alert;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = switch (alert.level) {
+      '高' => AppColors.amber,
+      '中' => AppColors.mistBright,
+      _ => AppColors.mist,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 30,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  alert.level,
+                  style: TextStyle(color: tone, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  alert.time,
+                  style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  alert.title,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  alert.detail,
+                  style: const TextStyle(color: AppColors.mist, fontSize: 10, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                alert.channel,
+                style: const TextStyle(color: AppColors.mistBright, fontSize: 10),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                alert.state,
+                style: const TextStyle(color: AppColors.mist, fontSize: 10),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

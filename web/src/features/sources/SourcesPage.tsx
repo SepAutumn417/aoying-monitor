@@ -1,36 +1,47 @@
-import { CircleDashed, Database, ExternalLink, Radio, Wallet } from "lucide-react";
+import { Database, MessageSquare, Radio, Wallet } from "lucide-react";
 
 import { PageHeader } from "../../components/ui/PageHeader";
-import { StatusPill } from "../../components/ui/StatusPill";
 
 const sources = [
   {
     name: "Telegram",
-    detail: "4 个会话 · Telethon 主账号",
+    detail: "4 个会话 · 主账号 Telethon",
+    icon: MessageSquare,
+    state: "未接入",
+    tone: "amber",
+    meta: ["观点 / 仓位 / 互动"],
+  },
+  {
+    name: "币安",
+    detail: "从 TG 消息与截图推断",
     icon: Radio,
-    stage: "I2",
-    note: "首次回补 200 条，之后每 5 分钟补洞；编辑/删除也归档。",
+    state: "未接入",
+    tone: "amber",
+    meta: ["推断数据"],
   },
   {
     name: "OKX",
-    detail: "只读 API · 实盘仓位",
-    icon: ExternalLink,
-    stage: "I4",
-    note: "需要 user 提供只读 key；先解析 authorId，再轮询持仓/成交。",
+    detail: "只读 API · Orbit 实盘",
+    icon: Wallet,
+    state: "未接入",
+    tone: "amber",
+    meta: ["官方仓位"],
   },
   {
     name: "fomo",
     detail: "Solana / Base 链上钱包",
-    icon: Wallet,
-    stage: "I5",
-    note: "免费 key 一次性解析钱包，之后走公共 RPC；标注“链上推断”。",
+    icon: Database,
+    state: "未接入",
+    tone: "amber",
+    meta: ["链上推断"],
   },
   {
     name: "X",
-    detail: "twscrape · 小号 cookies",
-    icon: Database,
-    stage: "I6",
-    note: "90 秒轮询；cookie 失效/被限流时降级并告警。",
+    detail: "@thankUcrypto_ · 轮询",
+    icon: Radio,
+    state: "未接入",
+    tone: "amber",
+    meta: ["日常观点"],
   },
 ];
 
@@ -38,45 +49,43 @@ export function SourcesPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="SOURCES / 来源"
-        title="数据源与健康"
-        description="每个来源独立配置、独立健康检查；接入一个就验收一个，不等待全部完成。"
-        action={<StatusPill tone="pending" label="0 / 4 已接入" />}
+        title="数据源"
+        meta={
+          <>
+            0 / 5 已接入 ·{" "}
+            <span className="rounded border border-amber-signal/30 bg-amber-signal/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-signal">
+              示例数据
+            </span>
+          </>
+        }
       />
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {sources.map(({ name, detail, icon: Icon, stage, note }) => (
-          <article key={name} className="panel rounded-xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-lg border border-mist-400/15 bg-white/[0.03]">
-                  <Icon className="h-4 w-4 text-mist-200" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-semibold text-white">{name}</h2>
-                  <p className="mt-1 text-xs text-mist-400">{detail}</p>
-                </div>
+      <section className="panel overflow-hidden rounded-xl">
+        <ul className="divide-y divide-mist-400/[0.07]">
+          {sources.map(({ name, detail, icon: Icon, state, meta }) => (
+            <li key={name} className="flex items-center gap-3 px-4 py-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg border border-mist-400/15 bg-white/[0.03]">
+                <Icon className="h-3.5 w-3.5 text-mist-200" />
               </div>
-              <span className="rounded-md border border-mist-400/15 px-2 py-1 font-mono text-[10px] text-mist-400">
-                {stage}
-              </span>
-            </div>
-            <p className="mt-4 text-xs leading-5 text-mist-400">{note}</p>
-            <div className="mt-4 flex items-center justify-between border-t border-mist-400/10 pt-3">
-              <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-mist-400">
-                <CircleDashed className="h-3 w-3" />
-                未配置
-              </span>
-              <button
-                type="button"
-                className="rounded-md border border-mist-400/15 px-2.5 py-1.5 text-[11px] text-mist-200 transition hover:border-signal-400/30 hover:text-white"
-              >
-                查看接入说明
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-white">{name}</p>
+                <p className="mt-0.5 text-[11px] text-mist-400">{detail}</p>
+              </div>
+              <div className="hidden items-center gap-1.5 sm:flex">
+                {meta.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-mist-400"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <span className="w-16 text-right text-[11px] text-amber-signal">{state}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/demo.dart';
 import '../theme.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
@@ -8,225 +9,169 @@ import '../widgets/status_chip.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
-  static const _sources = [
-    ('Telegram', '4 个会话 · 仓位/观点/互动', 'I2 接入'),
-    ('Binance（TG 推断）', '从群消息/截图抽取仓位', 'I3 接入'),
-    ('OKX 实盘', '只读 API · Orbit 持仓', 'I4 接入'),
-    ('fomo 链上', 'Solana / Base 钱包', 'I5 接入'),
-  ];
-
-  static const _roadmap = [
-    ('I0', '规格与脚手架', '当前', StatusTone.ok),
-    ('I1', '登录 + 设备 + 实时通道', '下一步', StatusTone.pending),
-    ('I2', 'Telegram + 时间线', '待开始', StatusTone.pending),
-    ('I3', 'Binance 抽取 + 安卓通知', '待开始', StatusTone.pending),
-    ('I4–I6', 'OKX / fomo / X', '待开始', StatusTone.pending),
-    ('I7–I8', '可靠性 / 上线 soak', '待开始', StatusTone.pending),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
-        const PageHeader(
-          eyebrow: 'OVERVIEW / 总览',
-          title: '监控总览',
-          subtitle: '熬鹰资本的交易动作与公开发言，最终会汇入同一条时间线。当前是 I0 骨架，先把三端跑通，再逐个接入数据源。',
+        PageHeader(
+          title: '总览',
+          meta: '最后更新 $demoUpdatedAt',
+          action: const DemoBadge(),
         ),
-        const SizedBox(height: 16),
-        const _HeroCard(),
+        const _KpiGrid(),
+        const SizedBox(height: 10),
+        const _AllocationCard(),
         const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final width = (constraints.maxWidth - 10) / 2;
-            return Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final (name, detail, stage) in _sources)
-                  SizedBox(width: width, child: _SourceCard(name: name, detail: detail, stage: stage)),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 18),
-        SectionCard(
+        const SectionCard(
+          padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text('最新事件', style: Theme.of(context).textTheme.titleMedium),
-                  const Spacer(),
-                  const Icon(Icons.layers_outlined, size: 18, color: AppColors.mist),
-                ],
-              ),
-              const SizedBox(height: 14),
-              const EmptyState(
-                icon: Icons.inbox_outlined,
-                title: '还没有事件',
-                description: 'I2 接入 Telegram 后，这里会按时间倒序出现消息、仓位变化和告警；点击可查看原始证据。',
-              ),
+              _CardHead(title: '当前持仓', trailing: '7 个'),
+              _PositionTable(),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
         SectionCard(
+          padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text('增量路线', style: Theme.of(context).textTheme.titleMedium),
-                  const Spacer(),
-                  const Icon(Icons.arrow_outward, size: 18, color: AppColors.mist),
-                ],
-              ),
-              const SizedBox(height: 10),
-              for (final (id, label, state, tone) in _roadmap)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 42,
-                        child: Text(
-                          id,
-                          style: const TextStyle(
-                            color: AppColors.mist,
-                            fontSize: 10,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: const TextStyle(color: AppColors.mistBright, fontSize: 12),
-                        ),
-                      ),
-                      StatusChip(label: state, tone: tone),
-                    ],
-                  ),
-                ),
+              _CardHead(title: '仓位变化', trailing: '今日 $demoChangesToday 次'),
+              for (final change in demoChanges) _ChangeRow(change: change),
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        const SectionCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CardHead(title: '最新发言', trailing: 'TG · X'),
+              _StatementList(),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const SectionCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _CardHead(title: '最新提醒', trailing: '全部已送达'),
+              _AlertList(),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        const _WatchCard(),
       ],
     );
   }
 }
 
-class _HeroCard extends StatelessWidget {
-  const _HeroCard();
+class _KpiGrid extends StatelessWidget {
+  const _KpiGrid();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.signal.withValues(alpha: 0.10),
-            AppColors.panel,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.signal.withValues(alpha: 0.18)),
+    final positive = demoUnrealized >= 0;
+    final cards = <(String, String, String, Color)>[
+      (
+        '总名义仓位',
+        _compact(demoTotalNotional),
+        '${demoPositions.length} 个持仓 · 3 个场所',
+        Colors.white,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.verified_user_outlined, size: 16, color: AppColors.signal),
-              SizedBox(width: 7),
-              Text(
-                'SYSTEM SKELETON',
-                style: TextStyle(
-                  color: AppColors.signal,
-                  fontSize: 9,
-                  letterSpacing: 1.6,
-                  fontWeight: FontWeight.w600,
+      (
+        '未实现盈亏',
+        '${positive ? '+' : ''}${_compact(demoUnrealized)}',
+        '按标记价',
+        positive ? AppColors.signal : AppColors.danger,
+      ),
+      (
+        '今日已实现',
+        '+${_compact(demoRealizedToday)}',
+        '含已平仓 2 笔',
+        AppColors.signal,
+      ),
+      ('今日仓位变化', '$demoChangesToday', '最近 5 次在下方', Colors.white),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth > 620 ? 4 : 2;
+        final width = (constraints.maxWidth - 8 * (columns - 1)) / columns;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final card in cards)
+              SizedBox(
+                width: width,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+                  decoration: BoxDecoration(
+                    color: AppColors.panel,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        card.$1,
+                        style: const TextStyle(color: AppColors.mist, fontSize: 11),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        card.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: card.$4,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        card.$3,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text('系统骨架已就绪', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 6),
-          Text(
-            'React Web、FastAPI 后端、Flutter Android 三段骨架已经落位。接下来先做登录与实时通道，再按增量接入数据源。',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _Metric(value: '3', label: '端骨架'),
-              const SizedBox(width: 8),
-              _Metric(value: '0', label: '数据源'),
-              const SizedBox(width: 8),
-              _Metric(value: '1', label: '当前增量'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.ink.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: const TextStyle(color: AppColors.mist, fontSize: 9, letterSpacing: 0.8),
-            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class _SourceCard extends StatelessWidget {
-  const _SourceCard({required this.name, required this.detail, required this.stage});
+class _AllocationCard extends StatelessWidget {
+  const _AllocationCard();
 
-  final String name;
-  final String detail;
-  final String stage;
+  static const _bars = <String, Color>{
+    '币安': AppColors.amber,
+    'OKX': AppColors.mist,
+    'fomo': AppColors.signal,
+  };
 
   @override
   Widget build(BuildContext context) {
+    final allocation = demoAllocation;
+    final total = allocation.values.fold(0.0, (a, b) => a + b);
+
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
         color: AppColors.panel,
         borderRadius: BorderRadius.circular(12),
@@ -235,32 +180,427 @@ class _SourceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            detail,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.mist, fontSize: 10, height: 1.45),
-          ),
-          const SizedBox(height: 10),
-          Row(
+          const Row(
             children: [
-              StatusChip(label: stage),
-              const Spacer(),
-              const Text(
-                '—',
-                style: TextStyle(color: AppColors.mist, fontSize: 14),
+              Text('场所分布', style: TextStyle(color: AppColors.mist, fontSize: 11)),
+              Spacer(),
+              Text('按名义价值', style: TextStyle(color: AppColors.mist, fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: SizedBox(
+              height: 7,
+              child: Row(
+                children: [
+                  for (final entry in allocation.entries)
+                    Expanded(
+                      flex: ((entry.value / total) * 1000).round(),
+                      child: Container(color: _bars[entry.key]),
+                    ),
+                ],
               ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 14,
+            runSpacing: 4,
+            children: [
+              for (final entry in allocation.entries)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 7, height: 7, color: _bars[entry.key]),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${entry.key} ${_compact(entry.value)}',
+                      style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${((entry.value / total) * 100).round()}%',
+                      style: const TextStyle(color: AppColors.mistBright, fontSize: 10),
+                    ),
+                  ],
+                ),
             ],
           ),
         ],
       ),
     );
   }
+}
+
+class _PositionTable extends StatelessWidget {
+  const _PositionTable();
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = [...demoPositions]..sort((a, b) => b.notional.compareTo(a.notional));
+
+    // 窄屏优先：每个持仓一行两段，左侧场所/币种/方向，右侧名义/盈亏，
+    // 开仓与标记价放第二行明细，避免横向滚动把列挤出屏幕。
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0)
+            const Divider(height: 1, thickness: 1, color: AppColors.border),
+          _PositionRow(position: rows[i]),
+        ],
+      ],
+    );
+  }
+}
+
+class _PositionRow extends StatelessWidget {
+  const _PositionRow({required this.position});
+
+  final DemoPosition position;
+
+  @override
+  Widget build(BuildContext context) {
+    final long = position.side == '多';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              StatusChip(label: position.venue, tone: StatusTone.pending),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  position.symbol,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                position.leverage == null
+                    ? position.side
+                    : '${position.side} ${position.leverage}x',
+                style: TextStyle(
+                  color: long ? AppColors.signal : AppColors.amber,
+                  fontSize: 10,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _compact(position.notional),
+                style: const TextStyle(color: AppColors.mistBright, fontSize: 11),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 54,
+                child: Text(
+                  '${position.pnlPct >= 0 ? '+' : ''}${position.pnlPct.toStringAsFixed(2)}%',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: position.pnlPct >= 0 ? AppColors.signal : AppColors.danger,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '开仓 ${_price(position.entry)} · 标记 ${_price(position.mark)} · ${position.confidence}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.mist, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChangeRow extends StatelessWidget {
+  const _ChangeRow({required this.change});
+
+  final DemoChange change;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = switch (change.action) {
+      '新开' || '加仓' => AppColors.signal,
+      '减仓' => AppColors.amber,
+      _ => AppColors.mistBright,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 38,
+            child: Text(
+              change.time,
+              style: const TextStyle(color: AppColors.mist, fontSize: 10),
+            ),
+          ),
+          SizedBox(
+            width: 34,
+            child: Text(
+              change.action,
+              style: TextStyle(color: tone, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              '${change.venue} · ${change.symbol}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 11),
+            ),
+          ),
+          Text(
+            change.amount,
+            style: const TextStyle(
+              color: AppColors.mistBright,
+              fontSize: 11,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatementList extends StatelessWidget {
+  const _StatementList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final item in demoStatements.take(4)) _StatementRow(item: item),
+      ],
+    );
+  }
+}
+
+class _StatementRow extends StatelessWidget {
+  const _StatementRow({required this.item});
+
+  final DemoStatement item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 26,
+            child: Text(
+              item.source,
+              style: TextStyle(
+                color: item.source == 'TG' ? AppColors.signal : AppColors.mistBright,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.mistBright,
+                    fontSize: 11,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${item.channel} · ${item.time} · ${item.kind}',
+                  style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AlertList extends StatelessWidget {
+  const _AlertList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final alert in demoAlerts.take(4)) _AlertRow(alert: alert),
+      ],
+    );
+  }
+}
+
+class _AlertRow extends StatelessWidget {
+  const _AlertRow({required this.alert});
+
+  final DemoAlert alert;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = switch (alert.level) {
+      '高' => AppColors.amber,
+      '中' => AppColors.mistBright,
+      _ => AppColors.mist,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 20,
+            child: Text(
+              alert.level,
+              style: TextStyle(color: tone, fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  alert.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  alert.detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${alert.channel} · ${alert.state}',
+                  style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WatchCard extends StatelessWidget {
+  const _WatchCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.panel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('关注标的', style: TextStyle(color: AppColors.mist, fontSize: 11)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final item in demoWatchlist)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.symbol,
+                        style: const TextStyle(color: AppColors.mistBright, fontSize: 11),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.price,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                      Text(
+                        '${item.change >= 0 ? '+' : ''}${item.change.toStringAsFixed(2)}%',
+                        style: TextStyle(
+                          color: item.change >= 0 ? AppColors.signal : AppColors.danger,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CardHead extends StatelessWidget {
+  const _CardHead({required this.title, required this.trailing});
+
+  final String title;
+  final String trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const Spacer(),
+          Text(trailing, style: const TextStyle(color: AppColors.mist, fontSize: 10)),
+        ],
+      ),
+    );
+  }
+}
+
+String _compact(double value) {
+  final abs = value.abs();
+  if (abs >= 1000000) return '\$${(value / 1000000).toStringAsFixed(2)}M';
+  if (abs >= 1000) return '\$${(value / 1000).toStringAsFixed(1)}K';
+  return '\$${value.toStringAsFixed(0)}';
+}
+
+String _price(double value) {
+  if (value >= 1000) {
+    return value
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
+  }
+  return value.toStringAsFixed(value >= 10 ? 1 : 3);
 }

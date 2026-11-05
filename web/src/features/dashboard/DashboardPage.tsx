@@ -1,166 +1,327 @@
-import { ArrowUpRight, CircleDot, Layers, ShieldCheck } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Bell, MessageSquare, X } from "lucide-react";
 
 import { PageHeader } from "../../components/ui/PageHeader";
-import { StatusPill } from "../../components/ui/StatusPill";
+import {
+  demoAlerts,
+  demoAllocation,
+  demoChanges,
+  demoKpis,
+  demoPositions,
+  demoStatements,
+  demoWatchlist,
+} from "../../lib/demo";
+import { compactUsd, pnlTone, price, signedPct } from "../../lib/format";
 
-const sourceCards = [
-  {
-    name: "Telegram",
-    detail: "4 个会话 · 仓位/观点/互动",
-    stage: "I2 接入",
-    tone: "pending" as const,
-  },
-  {
-    name: "Binance（TG 推断）",
-    detail: "从群消息/截图抽取仓位",
-    stage: "I3 接入",
-    tone: "pending" as const,
-  },
-  {
-    name: "OKX 实盘",
-    detail: "只读 API · Orbit 持仓",
-    stage: "I4 接入",
-    tone: "pending" as const,
-  },
-  {
-    name: "fomo 链上",
-    detail: "Solana / Base 钱包",
-    stage: "I5 接入",
-    tone: "pending" as const,
-  },
-];
+const venueTone: Record<string, string> = {
+  币安: "border-amber-signal/30 bg-amber-signal/10 text-amber-signal",
+  OKX: "border-mist-400/25 bg-mist-400/10 text-mist-200",
+  fomo: "border-signal-400/25 bg-signal-400/10 text-signal-300",
+};
 
-const roadmap = [
-  ["I0", "规格与脚手架", "当前", "ok"],
-  ["I1", "登录 + 设备 + 实时通道", "下一步", "warn"],
-  ["I2", "Telegram + 时间线", "待开始", "pending"],
-  ["I3", "Binance 抽取 + 安卓通知", "待开始", "pending"],
-  ["I4–I6", "OKX / fomo / X", "待开始", "pending"],
-  ["I7–I8", "可靠性 / 上线 soak", "待开始", "pending"],
-] as const;
+const venueBar: Record<string, string> = {
+  币安: "bg-amber-signal",
+  OKX: "bg-mist-400",
+  fomo: "bg-signal-400",
+};
+
+const actionTone: Record<string, string> = {
+  新开: "text-signal-300",
+  加仓: "text-signal-300",
+  减仓: "text-amber-signal",
+  平仓: "text-mist-200",
+};
 
 export function DashboardPage() {
+  const kpiCards = [
+    {
+      label: "总名义仓位",
+      value: compactUsd(demoKpis.notional),
+      note: `${demoKpis.openPositions} 个持仓 · 3 个场所`,
+      tone: "text-white",
+    },
+    {
+      label: "未实现盈亏",
+      value: `${demoKpis.unrealized >= 0 ? "+" : ""}${compactUsd(demoKpis.unrealized)}`,
+      note: `${signedPct(demoKpis.unrealizedPct)} · 按标记价`,
+      tone: pnlTone(demoKpis.unrealized),
+    },
+    {
+      label: "今日已实现",
+      value: `+${compactUsd(demoKpis.realizedToday)}`,
+      note: "含已平仓 2 笔",
+      tone: "text-signal-300",
+    },
+    {
+      label: "今日仓位变化",
+      value: `${demoKpis.changesToday}`,
+      note: `下方展示最近 ${demoChanges.length} 次`,
+      tone: "text-white",
+    },
+  ];
+
   return (
     <div>
       <PageHeader
-        eyebrow="OVERVIEW / 总览"
         title="监控总览"
-        description="熬鹰资本的交易动作与公开发言，最终会汇入同一条时间线。当前是 I0 骨架，先把三端跑通，再逐个接入数据源。"
-        action={<StatusPill tone="ok" label="I0 骨架就绪" />}
+        meta={
+          <>
+            最后更新 {demoKpis.updatedAt}
+            <span className="ml-2 rounded border border-amber-signal/40 bg-amber-signal/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-signal">
+              示例数据
+            </span>
+          </>
+        }
+        action={
+          <button
+            type="button"
+            className="rounded-lg border border-signal-400/25 bg-signal-400/10 px-3 py-1.5 text-xs text-signal-300"
+          >
+            仅看仓位变化
+          </button>
+        }
       />
 
-      <section className="panel relative overflow-hidden rounded-xl p-5 md:p-6">
-        <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-signal-400/5 blur-3xl" />
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-signal-300" />
-              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-signal-300">
-                SYSTEM SKELETON
-              </span>
-            </div>
-            <h2 className="mt-2 text-xl font-semibold text-white md:text-2xl">
-              系统骨架已就绪
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-mist-400">
-              React Web、FastAPI 后端、Flutter Android 三段骨架已经落位。接下来先做登录与实时通道，再按增量接入
-              Telegram、Binance、OKX、fomo 和 X。
-            </p>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {kpiCards.map((card) => (
+          <div key={card.label} className="panel rounded-xl px-4 py-3.5">
+            <p className="text-xs text-mist-400">{card.label}</p>
+            <p className={`mt-1.5 font-mono text-xl ${card.tone}`}>{card.value}</p>
+            <p className="mt-1 text-[11px] text-mist-400">{card.note}</p>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-lg border border-mist-400/10 bg-black/20 px-3 py-3">
-              <p className="font-mono text-lg text-white">3</p>
-              <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-mist-400">端骨架</p>
-            </div>
-            <div className="rounded-lg border border-mist-400/10 bg-black/20 px-3 py-3">
-              <p className="font-mono text-lg text-white">0</p>
-              <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-mist-400">数据源</p>
-            </div>
-            <div className="rounded-lg border border-mist-400/10 bg-black/20 px-3 py-3">
-              <p className="font-mono text-lg text-white">1</p>
-              <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-mist-400">当前增量</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {sourceCards.map((source) => (
-          <article key={source.name} className="panel rounded-xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-white">{source.name}</p>
-                <p className="mt-1 text-xs leading-5 text-mist-400">{source.detail}</p>
-              </div>
-              <CircleDot className="h-4 w-4 shrink-0 text-mist-400/50" />
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-2">
-              <StatusPill tone={source.tone} label={source.stage} />
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-signal/25 bg-amber-signal/5 px-2 py-1 font-mono text-[11px] tracking-wide text-amber-signal">
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                NOT CONNECTED
-              </span>
-            </div>
-          </article>
         ))}
       </section>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <section className="panel flex flex-col rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-mist-400">
-                LATEST EVENTS
-              </p>
-              <h3 className="mt-1 text-base font-semibold text-white">最新事件</h3>
+      <section className="panel mt-3 rounded-xl px-4 py-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-mist-400">场所分布</p>
+          <p className="font-mono text-[11px] text-mist-400">按名义价值</p>
+        </div>
+        <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-white/[0.04]">
+          {demoAllocation.map((item) => (
+            <div
+              key={item.venue}
+              className={venueBar[item.venue]}
+              style={{ width: `${item.share * 100}%` }}
+            />
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+          {demoAllocation.map((item) => (
+            <span key={item.venue} className="flex items-center gap-1.5 text-[11px] text-mist-400">
+              <span className={`h-2 w-2 rounded-sm ${venueBar[item.venue]}`} />
+              {item.venue} {compactUsd(item.value)}
+              <span className="font-mono">{(item.share * 100).toFixed(0)}%</span>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.55fr_1fr]">
+        <section className="panel overflow-hidden rounded-xl">
+          <div className="flex items-center justify-between border-b border-mist-400/10 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-white">当前持仓</h2>
+              <span className="font-mono text-[11px] text-mist-400">{demoPositions.length} 个</span>
             </div>
-            <Layers className="h-4 w-4 text-mist-400/60" />
+            <a href="/positions" className="text-xs text-mist-400 hover:text-mist-200">
+              全部持仓 →
+            </a>
           </div>
-          <div className="mt-5 grid flex-1 place-items-center rounded-lg border border-dashed border-mist-400/15 bg-black/10 px-4 py-10 text-center">
-            <p className="text-sm font-medium text-mist-200">还没有事件</p>
-            <p className="mt-1 max-w-sm text-xs leading-5 text-mist-400">
-              I2 接入 Telegram 后，这里会按时间倒序出现消息、仓位变化和告警；点击可查看原始证据。
-            </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              {["消息原文", "抽取结果", "仓位变化", "原始证据"].map((item) => (
-                <span
-                  key={item}
-                  className="rounded-md border border-mist-400/15 bg-white/[0.02] px-2 py-1 text-[11px] text-mist-400"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left">
+              <thead>
+                <tr className="border-b border-mist-400/10 text-[11px] text-mist-400">
+                  <th className="px-4 py-2 font-normal">场所</th>
+                  <th className="px-4 py-2 font-normal">币种</th>
+                  <th className="px-4 py-2 font-normal">方向</th>
+                  <th className="px-4 py-2 text-right font-normal">名义</th>
+                  <th className="px-4 py-2 text-right font-normal">开仓 / 标记</th>
+                  <th className="px-4 py-2 text-right font-normal">盈亏</th>
+                  <th className="px-4 py-2 text-right font-normal">置信</th>
+                </tr>
+              </thead>
+              <tbody>
+                {demoPositions.map((position) => (
+                  <tr
+                    key={position.id}
+                    className="border-b border-mist-400/[0.07] last:border-0 hover:bg-white/[0.02]"
+                  >
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${venueTone[position.venue]}`}
+                      >
+                        {position.venue}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs font-medium text-white">{position.symbol}</td>
+                    <td className="px-4 py-2.5 text-xs text-mist-200">
+                      {position.side}
+                      {position.leverage ? (
+                        <span className="ml-1 font-mono text-[10px] text-mist-400">
+                          {position.leverage}x
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs text-mist-200">
+                      {compactUsd(position.notional)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-[11px] text-mist-400">
+                      {price(position.entry)} / {price(position.mark)}
+                    </td>
+                    <td
+                      className={`px-4 py-2.5 text-right font-mono text-xs ${pnlTone(position.pnlPct)}`}
+                    >
+                      {signedPct(position.pnlPct)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span
+                        className={`text-[11px] ${
+                          position.confidence === "高" ? "text-mist-200" : "text-amber-signal/90"
+                        }`}
+                      >
+                        {position.confidence}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
-        <section className="panel rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-mist-400">
-                ROADMAP
-              </p>
-              <h3 className="mt-1 text-base font-semibold text-white">增量路线</h3>
-            </div>
-            <ArrowUpRight className="h-4 w-4 text-mist-400/60" />
+        <section className="panel overflow-hidden rounded-xl">
+          <div className="flex items-center justify-between border-b border-mist-400/10 px-4 py-3">
+            <h2 className="text-sm font-semibold text-white">仓位变化</h2>
+            <a href="/positions" className="text-xs text-mist-400 hover:text-mist-200">
+              今日 {demoKpis.changesToday} 次 →
+            </a>
           </div>
-          <ol className="mt-4 space-y-2">
-            {roadmap.map(([id, label, state, tone]) => (
-              <li
-                key={id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-mist-400/10 bg-black/10 px-3 py-2.5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-mist-400">
-                    {id}
-                  </span>
-                  <span className="text-xs text-mist-200">{label}</span>
+          <ul className="divide-y divide-mist-400/[0.07]">
+            {demoChanges.map((change) => (
+              <li key={change.id} className="px-4 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-mist-400">{change.time}</span>
+                    <span className={`text-xs font-semibold ${actionTone[change.action]}`}>
+                      {change.action}
+                    </span>
+                    <span className="text-xs text-white">{change.symbol}</span>
+                    <span className="font-mono text-[10px] text-mist-400">{change.venue}</span>
+                  </div>
+                  <span className="font-mono text-[11px] text-mist-200">{change.amount}</span>
                 </div>
-                <StatusPill tone={tone} label={state} />
+                <p className="mt-0.5 text-[11px] text-mist-400">{change.detail}</p>
               </li>
             ))}
-          </ol>
+          </ul>
         </section>
+      </div>
+
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.55fr_1fr]">
+        <section className="panel overflow-hidden rounded-xl">
+          <div className="flex items-center justify-between border-b border-mist-400/10 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-mist-400" />
+              <h2 className="text-sm font-semibold text-white">最新发言</h2>
+            </div>
+            <a href="/timeline" className="text-xs text-mist-400 hover:text-mist-200">
+              全部 →
+            </a>
+          </div>
+          <ul className="divide-y divide-mist-400/[0.07]">
+            {demoStatements.slice(0, 4).map((statement) => (
+              <li key={statement.id} className="px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`grid h-5 w-5 place-items-center rounded ${
+                      statement.source === "TG" ? "bg-mist-400/15" : "bg-white/[0.06]"
+                    }`}
+                  >
+                    {statement.source === "TG" ? (
+                      <MessageSquare className="h-3 w-3 text-mist-200" />
+                    ) : (
+                      <X className="h-3 w-3 text-mist-200" />
+                    )}
+                  </span>
+                  <span className="text-[11px] text-mist-400">{statement.channel}</span>
+                  <span className="font-mono text-[11px] text-mist-400">{statement.time}</span>
+                  {statement.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-mist-400"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-sm leading-6 text-mist-200">{statement.text}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <div className="flex flex-col gap-4">
+          <section className="panel overflow-hidden rounded-xl">
+            <div className="flex items-center justify-between border-b border-mist-400/10 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-mist-400" />
+                <h2 className="text-sm font-semibold text-white">最新提醒</h2>
+              </div>
+              <a href="/alerts" className="text-xs text-mist-400 hover:text-mist-200">
+                全部 →
+              </a>
+            </div>
+            <ul className="divide-y divide-mist-400/[0.07]">
+              {demoAlerts.slice(0, 3).map((alert) => (
+                <li key={alert.id} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          alert.level === "高"
+                            ? "bg-danger"
+                            : alert.level === "中"
+                              ? "bg-amber-signal"
+                              : "bg-mist-400"
+                        }`}
+                      />
+                      <span className="text-xs text-mist-200">{alert.title}</span>
+                    </div>
+                    <span className="font-mono text-[11px] text-mist-400">{alert.time}</span>
+                  </div>
+                  <p className="mt-0.5 pl-3.5 text-[11px] text-mist-400">{alert.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="panel overflow-hidden rounded-xl">
+            <div className="border-b border-mist-400/10 px-4 py-3">
+              <h2 className="text-sm font-semibold text-white">关注标的</h2>
+            </div>
+            <ul className="divide-y divide-mist-400/[0.07]">
+              {demoWatchlist.map((item) => (
+                <li
+                  key={item.symbol}
+                  className="flex items-center justify-between px-4 py-2"
+                >
+                  <span className="text-xs font-medium text-white">{item.symbol}</span>
+                  <span className="font-mono text-[11px] text-mist-400">{item.price}</span>
+                  <span
+                    className={`inline-flex items-center gap-0.5 font-mono text-[11px] ${pnlTone(item.change)}`}
+                  >
+                    {item.change >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {signedPct(item.change)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
   );

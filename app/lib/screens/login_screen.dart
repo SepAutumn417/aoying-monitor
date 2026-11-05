@@ -16,18 +16,18 @@ class LoginScreen extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: AppColors.signal.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(11),
                           border: Border.all(
                             color: AppColors.signal.withValues(alpha: 0.30),
                           ),
@@ -35,36 +35,21 @@ class LoginScreen extends StatelessWidget {
                         child: const Icon(
                           Icons.monitor_heart_outlined,
                           color: AppColors.signal,
-                          size: 22,
+                          size: 21,
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'AOYING MONITOR',
-                            style: TextStyle(
-                              color: AppColors.mist,
-                              fontSize: 9,
-                              letterSpacing: 2.0,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            '熬鹰资本 · 交易监控',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        '熬鹰资本 · 交易监控',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 26),
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
@@ -73,31 +58,16 @@ class LoginScreen extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              const Icon(
-                                Icons.lock_outline,
-                                size: 16,
-                                color: AppColors.mistBright,
-                              ),
-                              const SizedBox(width: 7),
-                              Text(
-                                '登录',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
+                              Text('登录', style: Theme.of(context).textTheme.titleMedium),
                               const Spacer(),
-                              const StatusChip(label: 'I1 接入'),
+                              const StatusChip(label: '演示', tone: StatusTone.pending),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '登录与设备会话将在 I1 接入；现在可以先预览监控骨架。',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
                           const TextField(
                             enabled: false,
                             decoration: InputDecoration(
                               labelText: '用户名',
-                              hintText: 'I1 接入',
                               prefixIcon: Icon(Icons.person_outline, size: 18),
                             ),
                           ),
@@ -107,7 +77,6 @@ class LoginScreen extends StatelessWidget {
                             obscureText: true,
                             decoration: InputDecoration(
                               labelText: '密码',
-                              hintText: 'I1 接入',
                               prefixIcon: Icon(Icons.key_outlined, size: 18),
                             ),
                           ),
@@ -128,19 +97,8 @@ class LoginScreen extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 13),
                               ),
                               child: const Text(
-                                '预览骨架',
+                                '进入监控台',
                                 style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Center(
-                            child: Text(
-                              '只读监控 · 不执行交易',
-                              style: TextStyle(
-                                color: AppColors.mist.withValues(alpha: 0.7),
-                                fontSize: 10,
-                                letterSpacing: 1.2,
                               ),
                             ),
                           ),
@@ -148,15 +106,11 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Center(
                     child: Text(
-                      'v${AppConfig.appVersion} · ${AppConfig.increment} SCAFFOLD',
-                      style: TextStyle(
-                        color: AppColors.mist.withValues(alpha: 0.55),
-                        fontSize: 10,
-                        letterSpacing: 1.0,
-                      ),
+                      'v${AppConfig.appVersion} · 只读',
+                      style: const TextStyle(color: AppColors.mist, fontSize: 10),
                     ),
                   ),
                 ],

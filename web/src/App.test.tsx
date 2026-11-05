@@ -13,34 +13,40 @@ function renderAt(path: string) {
 }
 
 describe("App shell", () => {
-  it("renders the monitoring dashboard", () => {
+  it("renders the dashboard with positions and changes", () => {
     renderAt("/");
 
     expect(screen.getByText("监控总览")).toBeInTheDocument();
-    expect(screen.getByText("系统骨架已就绪")).toBeInTheDocument();
+    expect(screen.getByText("当前持仓")).toBeInTheDocument();
+    expect(screen.getByText("仓位变化")).toBeInTheDocument();
+    expect(screen.getByText("最新发言")).toBeInTheDocument();
   });
 
-  it("marks every data source as not connected in I0", () => {
+  it("labels demo data visibly", () => {
     renderAt("/");
-
-    for (const name of ["Telegram", "Binance（TG 推断）", "OKX 实盘", "fomo 链上"]) {
-      expect(screen.getByText(name)).toBeInTheDocument();
-    }
-    expect(screen.getAllByText("NOT CONNECTED")).toHaveLength(4);
+    expect(screen.getAllByText("示例数据").length).toBeGreaterThan(0);
   });
 
-  it("renders the timeline empty state", () => {
-    renderAt("/timeline");
-
-    expect(screen.getByText("事件时间线")).toBeInTheDocument();
-    expect(screen.getByText("时间线还没有数据")).toBeInTheDocument();
-  });
-
-  it("renders the positions table headers", () => {
+  it("renders positions with a venue filter", () => {
     renderAt("/positions");
 
-    expect(screen.getByText("持仓与仓位变化")).toBeInTheDocument();
-    expect(screen.getByText("还没有持仓")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "持仓" })).toBeInTheDocument();
+    expect(screen.getAllByText("BTCUSDT").length).toBeGreaterThan(0);
+    expect(screen.getByText("全部场所")).toBeInTheDocument();
+  });
+
+  it("renders statements on the timeline", () => {
+    renderAt("/timeline");
+
+    expect(screen.getByText("发言与事件")).toBeInTheDocument();
+    expect(screen.getByText(/ETH 这里 3510/)).toBeInTheDocument();
+  });
+
+  it("renders alerts", () => {
+    renderAt("/alerts");
+
+    expect(screen.getByRole("heading", { name: "提醒" })).toBeInTheDocument();
+    expect(screen.getByText("OKX ETHUSDT 加仓")).toBeInTheDocument();
   });
 
   it("falls back to the dashboard for unknown routes", () => {

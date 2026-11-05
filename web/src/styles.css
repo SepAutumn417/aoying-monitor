@@ -10,6 +10,7 @@
   --color-signal-400: #38e0a1;
   --color-signal-300: #6bf0bd;
   --color-amber-signal: #f4b860;
+  --color-danger: #ff6b6b;
   --font-sans: "Inter", "Noto Sans SC", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 }

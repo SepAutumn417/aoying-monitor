@@ -10,4 +10,8 @@ class AppConfig {
 
   static const appVersion = '0.1.0';
   static const increment = 'I0';
+
+  /// 调试/截图用：`--dart-define=START_AT=0` 直接进监控壳，跳过登录占位。
+  /// 空字符串表示正常从登录页开始。
+  static const startAt = String.fromEnvironment('START_AT');
 }

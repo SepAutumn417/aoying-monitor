@@ -1,58 +1,112 @@
-import { Filter, Radio, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { MessageSquare, Search, X } from "lucide-react";
 
 import { PageHeader } from "../../components/ui/PageHeader";
-import { StatusPill } from "../../components/ui/StatusPill";
+import { demoStatements } from "../../lib/demo";
+
+const filters = ["全部", "TG 观点", "X 观点", "仓位同步", "粉丝互动"] as const;
 
 export function TimelinePage() {
+  const [active, setActive] = useState<(typeof filters)[number]>("全部");
+  const [keyword, setKeyword] = useState("");
+
+  const rows = useMemo(() => {
+    return demoStatements.filter((statement) => {
+      const matchFilter =
+        active === "全部" ||
+        (active === "TG 观点" && statement.source === "TG" && statement.kind === "观点") ||
+        (active === "X 观点" && statement.source === "X") ||
+        (active === "仓位同步" && statement.kind === "仓位") ||
+        (active === "粉丝互动" && statement.kind === "互动");
+      const matchKeyword =
+        !keyword ||
+        statement.text.includes(keyword) ||
+        statement.tags.some((tag) => tag.toUpperCase().includes(keyword.toUpperCase()));
+      return matchFilter && matchKeyword;
+    });
+  }, [active, keyword]);
+
   return (
     <div>
       <PageHeader
-        eyebrow="TIMELINE / 时间线"
-        title="事件时间线"
-        description="Telegram、X、OKX、链上事件最终统一到这里。I0 先放筛选与空状态，I2 起接入真实消息。"
-        action={<StatusPill tone="pending" label="等待 I2" />}
-      />
-
-      <div className="panel rounded-xl p-4 md:p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-mist-400/15 bg-black/20 px-3 py-2">
-            <Search className="h-4 w-4 text-mist-400" />
+        title="发言与事件"
+        meta={
+          <>
+            {rows.length} 条 · 按时间倒序 ·{" "}
+            <span className="rounded border border-amber-signal/30 bg-amber-signal/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-signal">
+              示例数据
+            </span>
+          </>
+        }
+        action={
+          <div className="flex items-center gap-2 rounded-lg border border-mist-400/15 bg-black/20 px-3 py-1.5">
+            <Search className="h-3.5 w-3.5 text-mist-400" />
             <input
-              className="w-full bg-transparent text-sm text-mist-200 outline-none placeholder:text-mist-400/60"
-              placeholder="搜索币种、原文、地址或事件 ID"
-              aria-label="搜索事件"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              className="w-40 bg-transparent text-xs text-mist-200 outline-none placeholder:text-mist-400/60"
+              placeholder="搜索币种或原文"
+              aria-label="搜索发言"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {["全部来源", "全部币种", "全部类型", "最近 24h"].map((label) => (
-              <button
-                key={label}
-                type="button"
-                className="inline-flex items-center gap-2 rounded-lg border border-mist-400/15 bg-white/[0.02] px-3 py-2 text-xs text-mist-200 transition hover:border-mist-400/30"
-              >
-                {label}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-signal-400/25 bg-signal-400/10 px-3 py-2 text-xs text-signal-300"
-            >
-              <Filter className="h-3.5 w-3.5" />
-              筛选
-            </button>
-          </div>
-        </div>
+        }
+      />
 
-        <div className="mt-6 grid place-items-center rounded-lg border border-dashed border-mist-400/15 bg-black/10 px-4 py-16 text-center">
-          <div className="grid h-12 w-12 place-items-center rounded-full border border-mist-400/15 bg-white/[0.02]">
-            <Radio className="h-5 w-5 text-mist-400/70" />
-          </div>
-          <p className="mt-4 text-sm font-medium text-mist-200">时间线还没有数据</p>
-          <p className="mt-1 max-w-md text-xs leading-5 text-mist-400">
-            I2 会先接入 4 个 Telegram 会话；届时这里按时间倒序显示原始消息、抽取结果和仓位事件，并支持断线补拉。
-          </p>
-        </div>
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {filters.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            onClick={() => setActive(filter)}
+            className={`rounded-lg border px-2.5 py-1.5 text-xs transition ${
+              active === filter
+                ? "border-signal-400/30 bg-signal-400/10 text-signal-300"
+                : "border-mist-400/15 bg-white/[0.02] text-mist-200 hover:border-mist-400/30"
+            }`}
+          >
+            {filter}
+          </button>
+        ))}
       </div>
+
+      <section className="panel overflow-hidden rounded-xl">
+        <ul className="divide-y divide-mist-400/[0.07]">
+          {rows.map((statement) => (
+            <li key={statement.id} className="px-4 py-3.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`grid h-5 w-5 place-items-center rounded ${
+                    statement.source === "TG" ? "bg-mist-400/15" : "bg-white/[0.06]"
+                  }`}
+                >
+                  {statement.source === "TG" ? (
+                    <MessageSquare className="h-3 w-3 text-mist-200" />
+                  ) : (
+                    <X className="h-3 w-3 text-mist-200" />
+                  )}
+                </span>
+                <span className="text-xs text-mist-200">{statement.channel}</span>
+                <span className="font-mono text-[11px] text-mist-400">{statement.time}</span>
+                {statement.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-mist-400"
+                  >
+                    {tag}
+                  </span>
+                ))}
+                <span className="ml-auto font-mono text-[10px] text-mist-400">
+                  {statement.kind}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-mist-200">{statement.text}</p>
+            </li>
+          ))}
+          {rows.length === 0 ? (
+            <li className="px-4 py-12 text-center text-sm text-mist-400">没有匹配的发言</li>
+          ) : null}
+        </ul>
+      </section>
     </div>
   );
 }

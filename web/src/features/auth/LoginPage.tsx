@@ -1,6 +1,9 @@
 import { Activity, LockKeyhole } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function LoginPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="grid min-h-screen place-items-center px-4 py-10">
       <div className="w-full max-w-md">
@@ -12,7 +15,7 @@ export function LoginPage() {
             <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-mist-400">
               AOYING MONITOR
             </p>
-            <p className="text-sm font-semibold text-white">只读交易监控</p>
+            <p className="text-sm font-semibold text-white">只读监控台</p>
           </div>
         </div>
 
@@ -21,16 +24,12 @@ export function LoginPage() {
             <LockKeyhole className="h-4 w-4 text-mist-200" />
             <h1 className="text-lg font-semibold text-white">登录</h1>
           </div>
-          <p className="mt-2 text-xs leading-5 text-mist-400">
-            登录与设备会话在 I1 接入；当前表单仅为骨架，不会发送请求。
-          </p>
-
           <form className="mt-5 space-y-3" onSubmit={(event) => event.preventDefault()}>
             <label className="block">
               <span className="text-xs text-mist-200">用户名</span>
               <input
                 disabled
-                placeholder="I1 接入"
+                placeholder="用户名"
                 className="mt-1.5 w-full rounded-lg border border-mist-400/15 bg-black/20 px-3 py-2 text-sm text-mist-400 outline-none"
               />
             </label>
@@ -39,16 +38,16 @@ export function LoginPage() {
               <input
                 disabled
                 type="password"
-                placeholder="I1 接入"
+                placeholder="密码"
                 className="mt-1.5 w-full rounded-lg border border-mist-400/15 bg-black/20 px-3 py-2 text-sm text-mist-400 outline-none"
               />
             </label>
             <button
               type="button"
-              disabled
-              className="w-full rounded-lg border border-mist-400/15 bg-white/[0.02] px-3 py-2.5 text-sm text-mist-400"
+              onClick={() => navigate("/")}
+              className="w-full rounded-lg bg-signal-400 px-3 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-signal-300"
             >
-              I1 后启用登录
+              进入监控台
             </button>
           </form>
         </div>

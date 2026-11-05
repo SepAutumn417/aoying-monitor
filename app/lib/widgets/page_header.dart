@@ -5,34 +5,114 @@ import '../theme.dart';
 class PageHeader extends StatelessWidget {
   const PageHeader({
     super.key,
-    required this.eyebrow,
     required this.title,
-    required this.subtitle,
+    this.meta,
+    this.action,
   });
 
-  final String eyebrow;
   final String title;
-  final String subtitle;
+  final String? meta;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          eyebrow,
-          style: const TextStyle(
-            color: AppColors.signal,
-            fontSize: 10,
-            letterSpacing: 1.8,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(title, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 6),
-        Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.headlineSmall),
+          if (meta != null) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                meta!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.mist, fontSize: 11),
+              ),
+            ),
+          ] else
+            const Spacer(),
+          ?action,
+        ],
+      ),
+    );
+  }
+}
+
+/// 「示例数据」标记：所有 Mock 内容都必须带上，避免被误读成实时数据。
+class DemoBadge extends StatelessWidget {
+  const DemoBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppColors.amber.withValues(alpha: 0.35)),
+      ),
+      child: const Text(
+        '示例数据',
+        style: TextStyle(color: AppColors.amber, fontSize: 10, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// 紧凑筛选胶囊，用于持仓/发言/提醒的过滤条。
+class FilterChipRow extends StatelessWidget {
+  const FilterChipRow({
+    super.key,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final List<String> options;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 32,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: options.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final option = options[index];
+          final active = option == value;
+          return GestureDetector(
+            onTap: () => onChanged(option),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active
+                    ? AppColors.signal.withValues(alpha: 0.12)
+                    : AppColors.ink.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: active
+                      ? AppColors.signal.withValues(alpha: 0.35)
+                      : AppColors.border,
+                ),
+              ),
+              child: Text(
+                option,
+                style: TextStyle(
+                  color: active ? AppColors.signal : AppColors.mistBright,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
