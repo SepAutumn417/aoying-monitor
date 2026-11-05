@@ -1,0 +1,53 @@
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- local toolchain (large, machine-specific) ---
+.tools/
+.npm-cache/
+.acl-recovery/
+downloads/
+_probe_root.txt
+_probe.txt
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+pytest-cache-files-*/
+.ruff_cache/
+*.egg-info/
+tmp*/
+
+# --- node / web ---
+node_modules/
+web/dist/
+web/coverage/
+*.log
+npm-debug.log*
+
+# --- flutter / dart ---
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/flutter_*.log
+app/android/.gradle/
+app/android/local.properties
+app/**/GeneratedPluginRegistrant.*
+
+# --- secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- runtime data ---
+data/
+backups/
