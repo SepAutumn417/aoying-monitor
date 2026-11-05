@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../app_scope.dart';
+import '../live.dart';
 import '../theme.dart';
 import 'alerts_screen.dart';
 import 'dashboard_screen.dart';
@@ -19,6 +21,7 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   late int _index = widget.initialIndex.clamp(0, _screens.length - 1);
+  LiveController? _live;
 
   static const _screens = <Widget>[
     DashboardScreen(),
@@ -27,6 +30,16 @@ class _HomeShellState extends State<HomeShell> {
     AlertsScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final live = AppScope.liveOf(context);
+    if (!identical(live, _live)) {
+      _live = live;
+      live.start();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +53,42 @@ class _HomeShellState extends State<HomeShell> {
             Text('熬鹰监控'),
           ],
         ),
+        actions: [
+          if (_live != null)
+            AnimatedBuilder(
+              animation: _live!,
+              builder: (context, _) => Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _live!.status == LiveStatus.live
+                            ? AppColors.signal
+                            : _live!.status == LiveStatus.offline
+                            ? AppColors.danger
+                            : AppColors.amber,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      switch (_live!.status) {
+                        LiveStatus.live => '实时连接',
+                        LiveStatus.connecting => '连接中',
+                        LiveStatus.retrying => '重连中',
+                        LiveStatus.offline => '未连接',
+                        LiveStatus.idle => '待连接',
+                      },
+                      style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
       body: IndexedStack(index: _index, children: _screens),
       bottomNavigationBar: NavigationBar(

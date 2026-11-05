@@ -14,19 +14,27 @@ def _env_list(name: str, default: list[str]) -> list[str]:
 class Settings(BaseModel):
     """Runtime configuration, loaded from environment.
 
-    I0 uses the already-installed Pydantic rather than pydantic-settings so the
-    scaffold can run inside the current Windows sandbox. The settings surface is
-    intentionally identical to the later pydantic-settings version.
+    Deliberately plain Pydantic instead of pydantic-settings: the deployment
+    image installs both, but the local Windows sandbox only has Pydantic, and
+    the surface here is small enough that the extra dependency buys nothing.
     """
 
     app_env: str = os.getenv("APP_ENV", "dev")
     app_name: str = os.getenv("APP_NAME", "aoying-monitor")
-    app_version: str = "0.1.0"
-    database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://aoying:aoying@localhost:5432/aoying",
-    )
+    app_version: str = "0.2.0"
+
+    # Postgres in Docker; SQLite for a laptop run and for the test suite.
+    database_url: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./aoying.db")
+
     jwt_secret: str = os.getenv("JWT_SECRET", "dev-only-change-me")
+    jwt_issuer: str = "aoying-monitor"
+    access_token_ttl_minutes: int = int(os.getenv("ACCESS_TOKEN_TTL_MINUTES", "30"))
+    refresh_token_ttl_days: int = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30"))
+    ws_ticket_ttl_seconds: int = int(os.getenv("WS_TICKET_TTL_SECONDS", "60"))
+
+    admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
+    admin_password: str = os.getenv("ADMIN_PASSWORD", "")
+
     cors_origins: list[str] = _env_list(
         "CORS_ORIGINS",
         ["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -35,6 +43,10 @@ class Settings(BaseModel):
     @property
     def is_dev(self) -> bool:
         return self.app_env == "dev"
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.database_url.startswith("sqlite")
 
 
 @lru_cache

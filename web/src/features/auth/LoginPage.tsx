@@ -1,8 +1,31 @@
-import { Activity, LockKeyhole } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Activity, Loader2, LockKeyhole } from "lucide-react";
+import { useState, type FormEvent } from "react";
+
+import { ApiError } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 
 export function LoginPage() {
-  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      // LoginRoute watches the session and forwards to the page the user
+      // originally asked for, so nothing to navigate here.
+      await login(username.trim(), password);
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "登录失败，请稍后重试");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="grid min-h-screen place-items-center px-4 py-10">
@@ -24,30 +47,41 @@ export function LoginPage() {
             <LockKeyhole className="h-4 w-4 text-mist-200" />
             <h1 className="text-lg font-semibold text-white">登录</h1>
           </div>
-          <form className="mt-5 space-y-3" onSubmit={(event) => event.preventDefault()}>
+
+          <form className="mt-5 space-y-3" onSubmit={submit}>
             <label className="block">
               <span className="text-xs text-mist-200">用户名</span>
               <input
-                disabled
-                placeholder="用户名"
-                className="mt-1.5 w-full rounded-lg border border-mist-400/15 bg-black/20 px-3 py-2 text-sm text-mist-400 outline-none"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-mist-400/15 bg-black/20 px-3 py-2 text-sm text-white outline-none transition focus:border-signal-400/50"
               />
             </label>
             <label className="block">
               <span className="text-xs text-mist-200">密码</span>
               <input
-                disabled
                 type="password"
-                placeholder="密码"
-                className="mt-1.5 w-full rounded-lg border border-mist-400/15 bg-black/20 px-3 py-2 text-sm text-mist-400 outline-none"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-mist-400/15 bg-black/20 px-3 py-2 text-sm text-white outline-none transition focus:border-signal-400/50"
               />
             </label>
+
+            {error ? (
+              <p className="rounded-lg border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/10 px-3 py-2 text-[11px] text-[color:var(--color-danger)]">
+                {error}
+              </p>
+            ) : null}
+
             <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="w-full rounded-lg bg-signal-400 px-3 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-signal-300"
+              type="submit"
+              disabled={busy}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-signal-400 px-3 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-signal-300 disabled:opacity-60"
             >
-              进入监控台
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {busy ? "正在登录" : "进入监控台"}
             </button>
           </form>
         </div>

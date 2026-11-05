@@ -14,6 +14,8 @@ _probe_root.txt
 _probe.txt
 
 # --- python ---
+backend/.vendor/
+backend/*.db
 __pycache__/
 *.py[cod]
 .venv/
