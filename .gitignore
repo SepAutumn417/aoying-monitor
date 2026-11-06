@@ -15,6 +15,9 @@ _probe.txt
 
 # --- python ---
 backend/.vendor/
+# 本机无法用 pip，依赖由 scripts/fetch_deps.py 解压到这里
+backend/.pylib/
+backend/.pytest-tmp/
 backend/*.db
 __pycache__/
 *.py[cod]

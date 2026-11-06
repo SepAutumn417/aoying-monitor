@@ -47,7 +47,9 @@ def new_secret(nbytes: int = 32) -> str:
     return secrets.token_urlsafe(nbytes)
 
 
-def create_access_token(user_id: int, username: str, settings: Settings | None = None) -> tuple[str, int]:
+def create_access_token(
+    user_id: int, username: str, settings: Settings | None = None
+) -> tuple[str, int]:
     settings = settings or get_settings()
     now = datetime.now(UTC)
     ttl = timedelta(minutes=settings.access_token_ttl_minutes)

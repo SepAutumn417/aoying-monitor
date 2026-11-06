@@ -17,7 +17,7 @@ const session: ApiSession = {
     name: "测试浏览器",
     platform: "web",
     fingerprint: "web-browser",
-    app_version: "0.2.0",
+    app_version: "0.3.0",
     push_mode: "browser",
     created_at: new Date().toISOString(),
     last_seen_at: new Date().toISOString(),
@@ -56,7 +56,7 @@ beforeEach(() => {
             name: "测试浏览器",
             platform: "web",
             fingerprint: "web-browser",
-            app_version: "0.2.0",
+            app_version: "0.3.0",
             push_mode: "browser",
             created_at: new Date().toISOString(),
             last_seen_at: new Date(Date.now() - 120_000).toISOString(),
@@ -69,6 +69,29 @@ beforeEach(() => {
       }
       if (url.startsWith("/api/events")) {
         return json({ events: [], count: 0, latest_id: 0 });
+      }
+      if (url.startsWith("/api/telegram/messages")) {
+        return json({
+          messages: [
+            {
+              id: 1,
+              chat_id: -1001,
+              dialog_title: "熬鹰｜观点群",
+              message_id: 10,
+              sender_name: "熬鹰 资本",
+              text: "开多 BTC 2x",
+              media_kind: "",
+              posted_at: new Date().toISOString(),
+              edited_at: null,
+              deleted_at: null,
+              revisions: [],
+            },
+          ],
+          count: 1,
+        });
+      }
+      if (url.startsWith("/api/telegram/dialogs")) {
+        return json([]);
       }
       if (url.startsWith("/api/auth/login")) {
         const body = JSON.parse(String(init?.body ?? "{}")) as { password?: string };
@@ -107,11 +130,13 @@ describe("App shell", () => {
     expect(screen.getByText("全部场所")).toBeInTheDocument();
   });
 
-  it("renders statements on the timeline", () => {
+  it("renders statements on the timeline", async () => {
     renderAt("/timeline");
 
-    expect(screen.getByText("发言与事件")).toBeInTheDocument();
-    expect(screen.getByText(/ETH 这里 3510/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "发言" })).toBeInTheDocument();
+    expect(await screen.findByText("开多 BTC 2x")).toBeInTheDocument();
+    expect(screen.getByText("含媒体")).toBeInTheDocument();
+    expect(screen.getByText("近 7 天")).toBeInTheDocument();
   });
 
   it("renders alerts", () => {

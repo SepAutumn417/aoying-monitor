@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from sqlalchemy import text
 
+from ..config import get_settings
 from ..db import SessionLocal, engine
 from ..events import latest_id
 
@@ -27,7 +28,7 @@ async def healthz() -> dict[str, object]:
     return {
         "status": "ok" if database == "ok" else "degraded",
         "service": "aoying-monitor",
-        "version": "0.2.0",
+        "version": get_settings().app_version,
         "database": database,
         "latest_event_id": cursor,
     }

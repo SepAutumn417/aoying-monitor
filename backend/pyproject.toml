@@ -10,13 +10,16 @@ requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.34,<1",
-  "sqlalchemy[asyncio]>=2.0,<3",
+  # 2.1 hangs the test suite on aiosqlite (the run never finishes); 2.0.44 is
+  # the version the whole suite passes on, so the range stays below 2.1.
+  "sqlalchemy[asyncio]>=2.0,<2.1",
   "asyncpg>=0.30,<1",
   "aiosqlite>=0.21,<1",
   "alembic>=1.14,<2",
   "pyjwt>=2.9,<3",
   "bcrypt>=4.2,<6",
   "httpx>=0.28,<1",
+  "telethon>=1.36,<2",
 ]
 
 [project.optional-dependencies]
@@ -40,3 +43,6 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# FastAPI's route signatures take `Depends(...)` / `Query(...)` in the default
+# argument; that is the framework's idiom, not a bug.
+ignore = ["B008"]

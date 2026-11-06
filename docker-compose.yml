@@ -23,6 +23,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # The Telegram session file and downloaded media must outlive the
+      # container, otherwise every restart needs a fresh interactive login.
+      TG_SESSION_PATH: /data/telegram.session
+      TG_MEDIA_DIR: /data/media
+    volumes:
+      - ./data:/data
     depends_on:
       db:
         condition: service_healthy

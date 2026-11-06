@@ -84,7 +84,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     try:
         while True:
             try:
-                message = await asyncio.wait_for(websocket.receive_json(), timeout=IDLE_TIMEOUT_SECONDS)
+                message = await asyncio.wait_for(
+                    websocket.receive_json(), timeout=IDLE_TIMEOUT_SECONDS
+                )
             except TimeoutError:
                 await websocket.close(code=4408, reason="idle timeout")
                 return
@@ -94,7 +96,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
             kind = message.get("type")
             if kind == "ping":
-                await websocket.send_json({"type": "pong", "server_time": datetime.now(UTC).isoformat()})
+                await websocket.send_json(
+                    {"type": "pong", "server_time": datetime.now(UTC).isoformat()}
+                )
             elif kind == "hello":
                 try:
                     after = int(message.get("last_event_id") or 0)

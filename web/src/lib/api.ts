@@ -57,6 +57,63 @@ export interface ApiTicket {
   ws_url: string;
 }
 
+export interface ApiCollectorStatus {
+  state: "stopped" | "connecting" | "running" | "error";
+  detail: string;
+  started_at: string | null;
+  last_message_at: string | null;
+  messages_total: number;
+  dialogs: number;
+}
+
+export interface ApiTelegramStatus {
+  collector: ApiCollectorStatus;
+  account: {
+    id: number;
+    label: string;
+    phone: string;
+    username: string;
+    display_name: string;
+    last_connected_at: string | null;
+    last_error: string;
+  } | null;
+  dialogs: number;
+  followed: number;
+  messages: number;
+}
+
+export interface ApiTelegramDialog {
+  id: number;
+  chat_id: number;
+  title: string;
+  kind: string;
+  username: string;
+  enabled: boolean;
+  last_message_id: number;
+  last_synced_at: string | null;
+  messages: number;
+}
+
+export interface ApiMessageRevision {
+  text: string;
+  media_kind: string;
+  replaced_at: string;
+}
+
+export interface ApiTelegramMessage {
+  id: number;
+  chat_id: number;
+  dialog_title: string;
+  message_id: number;
+  sender_name: string;
+  text: string;
+  media_kind: string;
+  posted_at: string;
+  edited_at: string | null;
+  deleted_at: string | null;
+  revisions: ApiMessageRevision[];
+}
+
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 const REFRESH_KEY = "aoying.refresh_token";
 
@@ -199,6 +256,64 @@ export const api = {
   },
   publishTestEvent() {
     return request<{ ok: boolean; event: ApiEvent }>("/api/events/test", { method: "POST" });
+  },
+  telegramStatus() {
+    return request<ApiTelegramStatus>("/api/telegram/status");
+  },
+  telegramDialogs() {
+    return request<ApiTelegramDialog[]>("/api/telegram/dialogs");
+  },
+  telegramDiscover() {
+    return request<
+      { chat_id: number; title: string; kind: string; username: string; followed: boolean }[]
+    >("/api/telegram/discover");
+  },
+  followDialog(chatId: number) {
+    return request<{ ok: boolean; dialog_id: number; enabled: boolean }>(
+      `/api/telegram/dialogs/${chatId}/follow`,
+      { method: "POST" },
+    );
+  },
+  unfollowDialog(chatId: number) {
+    return request<{ ok: boolean; enabled: boolean }>(`/api/telegram/dialogs/${chatId}/follow`, {
+      method: "DELETE",
+    });
+  },
+  telegramMessages(
+    params: {
+      limit?: number;
+      chatId?: number;
+      beforeId?: number;
+      kind?: "media" | "edited" | "deleted";
+      since?: string;
+      includeRevisions?: boolean;
+    } = {},
+  ) {
+    const query = new URLSearchParams();
+    query.set("limit", String(params.limit ?? 50));
+    if (params.chatId) query.set("chat_id", String(params.chatId));
+    if (params.beforeId) query.set("before_id", String(params.beforeId));
+    if (params.kind) query.set("kind", params.kind);
+    if (params.since) query.set("since", params.since);
+    if (params.includeRevisions) query.set("include_revisions", "true");
+    return request<{ messages: ApiTelegramMessage[]; count: number }>(
+      `/api/telegram/messages?${query.toString()}`,
+    );
+  },
+  startTelegram() {
+    return request<{ ok: boolean; collector: ApiCollectorStatus }>("/api/telegram/start", {
+      method: "POST",
+    });
+  },
+  stopTelegram() {
+    return request<{ ok: boolean; collector: ApiCollectorStatus }>("/api/telegram/stop", {
+      method: "POST",
+    });
+  },
+  syncTelegram() {
+    return request<{ ok: boolean; dialogs: number; synced_at: string }>("/api/telegram/sync", {
+      method: "POST",
+    });
   },
 };
 

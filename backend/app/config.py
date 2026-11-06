@@ -21,7 +21,7 @@ class Settings(BaseModel):
 
     app_env: str = os.getenv("APP_ENV", "dev")
     app_name: str = os.getenv("APP_NAME", "aoying-monitor")
-    app_version: str = "0.2.0"
+    app_version: str = "0.3.0"
 
     # Postgres in Docker; SQLite for a laptop run and for the test suite.
     database_url: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./aoying.db")
@@ -34,6 +34,16 @@ class Settings(BaseModel):
 
     admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "")
+
+    # Telegram collector. `api_id`/`api_hash` come from my.telegram.org; the
+    # session file is produced once by `python -m app.telegram_login`.
+    tg_api_id: int | None = int(os.environ["TG_API_ID"]) if os.getenv("TG_API_ID") else None
+    tg_api_hash: str = os.getenv("TG_API_HASH", "")
+    tg_session_path: str = os.getenv("TG_SESSION_PATH", "./data/telegram.session")
+    tg_media_dir: str = os.getenv("TG_MEDIA_DIR", "./data/media")
+    tg_backfill_limit: int = int(os.getenv("TG_BACKFILL_LIMIT", "200"))
+    tg_sync_interval_seconds: int = int(os.getenv("TG_SYNC_INTERVAL_SECONDS", "300"))
+    tg_auto_start: bool = os.getenv("TG_AUTO_START", "").lower() in {"1", "true", "yes"}
 
     cors_origins: list[str] = _env_list(
         "CORS_ORIGINS",

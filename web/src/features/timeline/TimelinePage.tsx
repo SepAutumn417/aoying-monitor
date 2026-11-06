@@ -1,111 +1,305 @@
-import { useMemo, useState } from "react";
-import { MessageSquare, Search, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Loader2, MessageSquare, RefreshCw, Search } from "lucide-react";
 
 import { PageHeader } from "../../components/ui/PageHeader";
-import { demoStatements } from "../../lib/demo";
+import {
+  api,
+  ApiError,
+  type ApiTelegramDialog,
+  type ApiTelegramMessage,
+} from "../../lib/api";
+import { useLive } from "../../lib/live";
 
-const filters = ["全部", "TG 观点", "X 观点", "仓位同步", "粉丝互动"] as const;
+/** Telegram truncates edits; the badge tells the operator the text may have moved. */
+function timeLabel(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days} 天前`;
+  return date.toLocaleDateString("zh-CN");
+}
+
+type KindFilter = "all" | "media" | "edited" | "deleted";
+type RangeFilter = "today" | "7d" | "all";
+
+const KIND_LABELS: Record<KindFilter, string> = {
+  all: "全部",
+  media: "含媒体",
+  edited: "已编辑",
+  deleted: "已删除",
+};
+
+const RANGE_LABELS: Record<RangeFilter, string> = {
+  today: "今日",
+  "7d": "近 7 天",
+  all: "全部时间",
+};
+
+const chipClass = (active: boolean) =>
+  `rounded-lg border px-2.5 py-1.5 text-xs transition ${
+    active
+      ? "border-signal-400/30 bg-signal-400/10 text-signal-300"
+      : "border-mist-400/15 bg-white/[0.02] text-mist-200 hover:border-mist-400/30"
+  }`;
 
 export function TimelinePage() {
-  const [active, setActive] = useState<(typeof filters)[number]>("全部");
+  const live = useLive();
+  const [messages, setMessages] = useState<ApiTelegramMessage[]>([]);
+  const [dialogs, setDialogs] = useState<ApiTelegramDialog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [chat, setChat] = useState<number | null>(null);
+  const [kind, setKind] = useState<KindFilter>("all");
+  const [range, setRange] = useState<RangeFilter>("all");
+  const [expanded, setExpanded] = useState<number[]>([]);
+
+  const since = useMemo(() => {
+    if (range === "all") return undefined;
+    const start = new Date();
+    if (range === "today") {
+      start.setHours(0, 0, 0, 0);
+    } else {
+      start.setDate(start.getDate() - 7);
+    }
+    return start.toISOString();
+  }, [range]);
+
+  const load = useCallback(async () => {
+    setError("");
+    try {
+      const data = await api.telegramMessages({
+        limit: 100,
+        chatId: chat ?? undefined,
+        kind: kind === "all" ? undefined : kind,
+        since,
+        // The whole point of the edit archive: the operator can see what the
+        // message said before it was rewritten.
+        includeRevisions: true,
+      });
+      setMessages(data.messages);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "读取消息失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [chat, kind, since]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    // Followed chats are the source filter; deriving it from the loaded rows
+    // would make the chip list shrink as soon as a filter hides a chat.
+    void api
+      .telegramDialogs()
+      .then((list) => setDialogs(list.filter((item) => item.enabled)))
+      .catch(() => setDialogs([]));
+  }, []);
+
+  // A new Telegram message arrives over the socket; reload so edits and
+  // deletions stay consistent instead of patching the list in two places.
+  useEffect(() => {
+    if (live.events.length === 0) return;
+    void load();
+    // Only the newest event matters as a trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live.events[0]?.id]);
 
   const rows = useMemo(() => {
-    return demoStatements.filter((statement) => {
-      const matchFilter =
-        active === "全部" ||
-        (active === "TG 观点" && statement.source === "TG" && statement.kind === "观点") ||
-        (active === "X 观点" && statement.source === "X") ||
-        (active === "仓位同步" && statement.kind === "仓位") ||
-        (active === "粉丝互动" && statement.kind === "互动");
-      const matchKeyword =
-        !keyword ||
-        statement.text.includes(keyword) ||
-        statement.tags.some((tag) => tag.toUpperCase().includes(keyword.toUpperCase()));
-      return matchFilter && matchKeyword;
-    });
-  }, [active, keyword]);
+    const term = keyword.trim();
+    if (!term) return messages;
+    return messages.filter(
+      (message) =>
+        message.text.includes(term) ||
+        message.sender_name.includes(term) ||
+        message.dialog_title.includes(term),
+    );
+  }, [messages, keyword]);
+
+  const toggleExpanded = (id: number) =>
+    setExpanded((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
 
   return (
     <div>
       <PageHeader
-        title="发言与事件"
-        meta={
-          <>
-            {rows.length} 条 · 按时间倒序 ·{" "}
-            <span className="rounded border border-amber-signal/30 bg-amber-signal/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-signal">
-              示例数据
-            </span>
-          </>
-        }
+        title="发言"
+        meta={`${rows.length} 条 · 实时来自 Telegram · ${live.status === "live" ? "已连接" : "未连接"}`}
         action={
-          <div className="flex items-center gap-2 rounded-lg border border-mist-400/15 bg-black/20 px-3 py-1.5">
-            <Search className="h-3.5 w-3.5 text-mist-400" />
-            <input
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              className="w-40 bg-transparent text-xs text-mist-200 outline-none placeholder:text-mist-400/60"
-              placeholder="搜索币种或原文"
-              aria-label="搜索发言"
-            />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-lg border border-mist-400/15 bg-black/20 px-3 py-1.5">
+              <Search className="h-3.5 w-3.5 text-mist-400" />
+              <input
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                className="w-38 bg-transparent text-xs text-mist-200 outline-none placeholder:text-mist-400/60"
+                placeholder="搜索原文或发送者"
+                aria-label="搜索发言"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="flex items-center gap-1.5 rounded-lg border border-mist-400/15 bg-white/[0.02] px-2.5 py-1.5 text-xs text-mist-200 hover:border-mist-400/30"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              刷新
+            </button>
           </div>
         }
       />
 
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {filters.map((filter) => (
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        <button type="button" onClick={() => setChat(null)} className={chipClass(chat === null)}>
+          全部会话
+        </button>
+        {dialogs.map((dialog) => (
           <button
-            key={filter}
+            key={dialog.id}
             type="button"
-            onClick={() => setActive(filter)}
-            className={`rounded-lg border px-2.5 py-1.5 text-xs transition ${
-              active === filter
-                ? "border-signal-400/30 bg-signal-400/10 text-signal-300"
-                : "border-mist-400/15 bg-white/[0.02] text-mist-200 hover:border-mist-400/30"
-            }`}
+            onClick={() => setChat(dialog.chat_id)}
+            className={chipClass(chat === dialog.chat_id)}
           >
-            {filter}
+            {dialog.title}
           </button>
         ))}
       </div>
 
-      <section className="panel overflow-hidden rounded-xl">
-        <ul className="divide-y divide-mist-400/[0.07]">
-          {rows.map((statement) => (
-            <li key={statement.id} className="px-4 py-3.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`grid h-5 w-5 place-items-center rounded ${
-                    statement.source === "TG" ? "bg-mist-400/15" : "bg-white/[0.06]"
-                  }`}
-                >
-                  {statement.source === "TG" ? (
-                    <MessageSquare className="h-3 w-3 text-mist-200" />
-                  ) : (
-                    <X className="h-3 w-3 text-mist-200" />
-                  )}
-                </span>
-                <span className="text-xs text-mist-200">{statement.channel}</span>
-                <span className="font-mono text-[11px] text-mist-400">{statement.time}</span>
-                {statement.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-mist-400"
-                  >
-                    {tag}
-                  </span>
-                ))}
-                <span className="ml-auto font-mono text-[10px] text-mist-400">
-                  {statement.kind}
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-mist-200">{statement.text}</p>
-            </li>
+      <div className="mb-3 flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(KIND_LABELS) as KindFilter[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setKind(value)}
+              className={chipClass(kind === value)}
+            >
+              {KIND_LABELS[value]}
+            </button>
           ))}
-          {rows.length === 0 ? (
-            <li className="px-4 py-12 text-center text-sm text-mist-400">没有匹配的发言</li>
-          ) : null}
-        </ul>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(RANGE_LABELS) as RangeFilter[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRange(value)}
+              className={chipClass(range === value)}
+            >
+              {RANGE_LABELS[value]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error ? (
+        <p className="mb-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+          {error}
+        </p>
+      ) : null}
+
+      <section className="panel overflow-hidden rounded-xl">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-mist-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            正在读取消息
+          </div>
+        ) : (
+          <ul className="divide-y divide-mist-400/[0.07]">
+            {rows.map((message) => {
+              const open = expanded.includes(message.id);
+              const hasHistory = message.revisions.length > 0;
+              return (
+                <li key={message.id} className="px-4 py-3.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="grid h-5 w-5 place-items-center rounded bg-mist-400/15">
+                      <MessageSquare className="h-3 w-3 text-mist-200" />
+                    </span>
+                    <span className="text-xs text-mist-200">{message.dialog_title}</span>
+                    <span className="text-[11px] text-mist-400">
+                      {message.sender_name || "未知发送者"}
+                    </span>
+                    <span className="font-mono text-[11px] text-mist-400">
+                      {timeLabel(message.posted_at)}
+                    </span>
+                    {message.edited_at ? (
+                      <span className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-amber-signal">
+                        已编辑
+                      </span>
+                    ) : null}
+                    {message.deleted_at ? (
+                      <span className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-danger">
+                        已删除
+                      </span>
+                    ) : null}
+                    {message.media_kind ? (
+                      <span className="rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-mist-400">
+                        {message.media_kind}
+                      </span>
+                    ) : null}
+                    <span className="ml-auto font-mono text-[10px] text-mist-400">
+                      #{message.message_id}
+                    </span>
+                  </div>
+
+                  {hasHistory ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(message.id)}
+                      className="mt-2 flex items-center gap-1 text-[11px] text-amber-signal hover:text-amber-signal/80"
+                    >
+                      {open ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                      {open ? "收起历史版本" : `查看历史版本（${message.revisions.length}）`}
+                    </button>
+                  ) : null}
+
+                  {open ? (
+                    <div className="mt-2 space-y-2">
+                      {message.revisions.map((revision, index) => (
+                        <div
+                          key={revision.replaced_at}
+                          className="rounded-lg border border-mist-400/10 bg-black/20 px-3 py-2"
+                        >
+                          <p className="text-[10px] text-mist-400">
+                            第 {index + 1} 版 · {timeLabel(revision.replaced_at)}被替换
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-mist-400">
+                            {revision.text || "（无文字内容）"}
+                          </p>
+                        </div>
+                      ))}
+                      <p className="text-[10px] text-signal-300">当前版本</p>
+                    </div>
+                  ) : null}
+
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-mist-200">
+                    {message.text || "（无文字内容）"}
+                  </p>
+                </li>
+              );
+            })}
+            {rows.length === 0 ? (
+              <li className="px-4 py-12 text-center text-sm text-mist-400">
+                {messages.length === 0
+                  ? "还没有采集到发言。先在「数据源」里完成 Telegram 登录并勾选会话。"
+                  : "当前筛选条件下没有消息，换个类型或时间范围试试。"}
+              </li>
+            ) : null}
+          </ul>
+        )}
       </section>
     </div>
   );

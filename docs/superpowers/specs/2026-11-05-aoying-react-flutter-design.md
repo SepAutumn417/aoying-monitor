@@ -136,3 +136,13 @@
 | I8 | 上线 soak | 连续 72 小时无丢消息、延迟达标 |
 
 每个增量结束都停下来交付验收，不自动进入下一个。
+
+## 10. 修订记录
+
+- 2026-11-07 · I2 收口时的实现偏差：
+  - 采集器暂与 API 同进程，`worker` 进程与 `LISTEN/NOTIFY` 推迟到 I7；因此 `api` 只跑 1 个 worker。
+  - 定时任务用自建 `asyncio` 循环，未引入 APScheduler；I3 定时任务变多时再评估。
+  - Telegram 表名保留 `telegram_accounts` / `telegram_dialogs` / `telegram_messages`，不改为本节 §3 的 `raw_messages`；编辑历史另存 `telegram_message_revisions`。
+  - 密码仍为 bcrypt(rounds=12)、访问令牌 30 分钟；Argon2id 与 15 分钟推迟到 I7。
+  - Web 令牌仍在 localStorage；HttpOnly + SameSite=Lax Cookie 推迟到 I7。
+- 增量路线调整为 I2.1 / I2.2 / I3a / I3b，理由见 `docs/backlog.md`。

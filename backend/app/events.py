@@ -77,7 +77,9 @@ def serialize(event: Event) -> dict[str, Any]:
     }
 
 
-async def append_event(db: AsyncSession, kind: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+async def append_event(
+    db: AsyncSession, kind: str, payload: dict[str, Any] | None = None
+) -> dict[str, Any]:
     event = Event(kind=kind, payload=json.dumps(payload or {}, ensure_ascii=False))
     db.add(event)
     await db.commit()
@@ -87,7 +89,9 @@ async def append_event(db: AsyncSession, kind: str, payload: dict[str, Any] | No
     return data
 
 
-async def replay(db: AsyncSession, after_id: int, limit: int = REPLAY_LIMIT) -> list[dict[str, Any]]:
+async def replay(
+    db: AsyncSession, after_id: int, limit: int = REPLAY_LIMIT
+) -> list[dict[str, Any]]:
     rows = await db.scalars(
         select(Event).where(Event.id > after_id).order_by(Event.id).limit(limit)
     )
