@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>熬鹰监控 · 原型 v1</title>
+<style>
+:root{--ink:#0A0E12;--panel:#11171F;--raised:#151D26;--border:#22303D;--mist:#8A99A8;--mist2:#C9D4DF;--signal:#3DDC97;--amber:#F5B84B;--danger:#FF6B6B}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--mist2);font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{display:grid;grid-template-columns:184px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--border);padding:18px 12px;background:#0C1219}
+aside h1{font:600 16px/1.4 "Microsoft YaHei","PingFang SC",sans-serif;margin:0 0 20px;padding-left:8px;color:#fff;white-space:nowrap}
+aside a{display:block;padding:8px 10px;border-radius:8px;color:var(--mist);text-decoration:none;font-size:13px;margin-bottom:2px}
+aside a.on{background:rgba(61,220,151,.1);color:#fff}
+main{padding:26px 30px 60px}
+h2{font-size:20px;color:#fff;margin:0 0 4px}
+.sub{color:var(--mist);font-size:12px;margin-bottom:22px}
+.alert{background:linear-gradient(96deg,rgba(61,220,151,.12),rgba(61,220,151,0) 62%);border:1px solid rgba(61,220,151,.28);border-radius:12px;padding:14px 16px;margin-bottom:20px}
+.alert-tag{font-size:11px;color:var(--signal);letter-spacing:.08em;margin-bottom:4px}
+.alert-main{font-size:18px;color:#fff;font-weight:600}
+.alert-meta{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--mist);margin-top:4px}
+.sect{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 10px}
+.sect h3{font-size:14px;color:#fff;margin:0}
+.sect span{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--mist)}
+.pos{background:var(--panel);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden}
+.pos.closed{opacity:.72}
+.head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(34,48,61,.7)}
+.sym{font-size:16px;color:#fff;font-weight:600;font-family:ui-monospace,Consolas,monospace}
+.badge{font-size:11px;padding:1px 7px;border-radius:5px;border:1px solid}
+.long{color:var(--signal);border-color:rgba(61,220,151,.35);background:rgba(61,220,151,.09)}
+.short{color:var(--danger);border-color:rgba(255,107,107,.35);background:rgba(255,107,107,.09)}
+.open{color:#fff;border-color:rgba(201,212,223,.28);background:rgba(201,212,223,.08)}
+.head .spacer{flex:1}
+.pnl{font-family:ui-monospace,Consolas,monospace;font-size:15px}
+.up{color:var(--signal)} .down{color:var(--danger)}
+.pnl small{display:block;font-size:10px;color:var(--mist);font-weight:400}
+.track{padding:6px 16px 14px}
+.step{display:grid;grid-template-columns:14px 92px 1fr auto;gap:10px;align-items:start;padding:7px 0;position:relative}
+.step+.step{border-top:1px dashed rgba(34,48,61,.6)}
+.dot{width:7px;height:7px;border-radius:50%;margin-top:7px;background:var(--mist)}
+.dot.open{background:var(--signal)} .dot.add{background:var(--signal)} .dot.reduce{background:var(--amber)}
+.dot.close{background:var(--danger)} .dot.lev{background:#7C8FA3}
+.tm{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--mist);padding-top:2px}
+.act{font-size:13px;color:#fff}
+.act em{font-style:normal;color:var(--mist);font-size:11px;margin-left:8px}
+.det{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--mist);text-align:right}
+.empty{border:1px dashed var(--border);border-radius:12px;padding:26px;text-align:center;color:var(--mist);font-size:13px}
+</style></head>
+<body><div class="wrap">
+<aside><h1>熬鹰监控</h1>
+<a class="on" href="#">总览</a><a href="#">持仓</a><a href="#">发言</a><a href="#">提醒</a><a href="#">数据源</a><a href="#">设置</a>
+</aside>
+<main>
+<h2>总览</h2>
+<div class="sub">原型 v1 · 数据来自书友会交易区真实信号 · 已完成 17 个仓位、0 个持仓中</div>
+<div class="alert">
+  <div class="alert-tag">最近一次动作</div>
+  <div class="alert-main">平仓 · BTCUSDT 多头</div>
+  <div class="alert-meta">2026-11-06 12:50:49 · 成交价 76,068 · 数量 9.73</div>
+</div>
+<div class="sect"><h3>持仓中</h3><span>0 个</span></div>
+<div class="empty">当前无持仓。机器人最近一次快照显示「当前无持仓」，等下一次开仓信号。</div>
+<div class="sect"><h3>已平仓</h3><span>累计已实现 +800,776 USDT · 最近 8 笔</span></div>
+<div class="pos closed">
+<div class="head">
+  <span class="sym">BTCUSDT</span>
+  <span class="badge long">多头</span>
+  <span class="badge open">5x</span>
+  <span class="badge open">已平仓</span><span class="badge open">11-06 12:50 平</span>
+  <span class="spacer"></span>
+  <span class="pnl up">+1,768<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">11-06 09:07</span><span class="act">新开仓<em>5x 目标</em></span><span class="det">价 76,014 · 9.73 · 4.93x</span></div><div class="step"><span class="dot close"></span><span class="tm">11-06 12:50</span><span class="act">平仓<em>5x 目标</em></span><span class="det">价 76,068 · 9.73 · 4.91x · 已实现 +1,768</span></div></div></div><div class="pos closed">
+<div class="head">
+  <span class="sym">ETHUSDT</span>
+  <span class="badge short">空头</span>
+  <span class="badge open">20x</span>
+  <span class="badge open">已平仓</span><span class="badge open">11-05 19:15 平</span>
+  <span class="spacer"></span>
+  <span class="pnl up">+947,072<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">11-04 19:03</span><span class="act">新开仓<em>10x 目标</em></span><span class="det">价 2,414 · 1,461 · 4.97x</span></div><div class="step"><span class="dot add"></span><span class="tm">11-04 19:05</span><span class="act">加仓（杠杆 10x -&gt; 20x）<em>20x 目标</em></span><span class="det">价 2,413 · 1,461 → 2,558 · 8.66x</span></div><div class="step"><span class="dot add"></span><span class="tm">11-04 19:36</span><span class="act">加仓<em>20x 目标</em></span><span class="det">价 2,418 · 2,558 → 4,149 · 14.30x</span></div><div class="step"><span class="dot add"></span><span class="tm">11-04 19:50</span><span class="act">加仓<em>20x 目标</em></span><span class="det">价 2,407 · 4,149 → 5,864 · 18.66x</span></div><div class="step"><span class="dot close"></span><span class="tm">11-05 19:15</span><span class="act">平仓<em>20x 目标</em></span><span class="det">价 2,252 · 5,864 · 7.92x · 已实现 +947,072</span></div></div></div><div class="pos closed">
+<div class="head">
+  <span class="sym">MUUSDT</span>
+  <span class="badge long">多头</span>
+  <span class="badge open">5x</span>
+  <span class="badge open">已平仓</span><span class="badge open">11-04 19:04 平</span>
+  <span class="spacer"></span>
+  <span class="pnl down">-287,525<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">11-04 05:53</span><span class="act">新开仓<em>4x 目标</em></span><span class="det">价 851.44 · 3,525 · 2.99x</span></div><div class="step"><span class="dot lev"></span><span class="tm">11-04 05:54</span><span class="act">持仓更新（杠杆 4x -&gt; 5x）<em>5x 目标</em></span><span class="det">价 853.96 · 3,525 → 3,525 · 2.98x</span></div><div class="step"><span class="dot add"></span><span class="tm">11-04 06:29</span><span class="act">加仓<em>5x 目标</em></span><span class="det">价 860.86 · 3,525 → 5,892 · 4.87x</span></div><div class="step"><span class="dot close"></span><span class="tm">11-04 19:04</span><span class="act">平仓<em>5x 目标</em></span><span class="det">价 805.25 · 5,892 · 6.70x · 已实现 -287,525</span></div></div></div><div class="pos closed">
+<div class="head">
+  <span class="sym">ETHUSDT</span>
+  <span class="badge short">空头</span>
+  <span class="badge open">10x</span>
+  <span class="badge open">已平仓</span><span class="badge open">11-04 05:52 平</span>
+  <span class="spacer"></span>
+  <span class="pnl down">-296,686<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">10-30 08:27</span><span class="act">新开仓<em>10x 目标</em></span><span class="det">价 2,228 · 1,122 · 1.92x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-30 08:40</span><span class="act">加仓<em>10x 目标</em></span><span class="det">价 2,225 · 1,122 → 2,244 · 3.82x</span></div><div class="step"><span class="dot lev"></span><span class="tm">10-30 10:19</span><span class="act">持仓更新（杠杆 10x -&gt; 5x）<em>5x 目标</em></span><span class="det">价 2,221 · 2,244 → 2,244 · 3.79x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-30 13:11</span><span class="act">加仓<em>5x 目标</em></span><span class="det">价 2,228 · 2,244 → 2,891 · 4.95x</span></div><div class="step"><span class="dot lev"></span><span class="tm">10-30 13:13</span><span class="act">持仓更新（杠杆 5x -&gt; 10x）<em>10x 目标</em></span><span class="det">价 2,229 · 2,891 → 2,891 · 4.97x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-30 15:20</span><span class="act">加仓<em>10x 目标</em></span><span class="det">价 2,256 · 2,891 → 5,386 · 9.92x</span></div><div class="step"><span class="dot reduce"></span><span class="tm">11-04 05:39</span><span class="act">减仓<em>10x 目标</em></span><span class="det">价 2,297 · 5,386 → 3,878 · 8.80x · 已实现 -76,665</span></div><div class="step"><span class="dot reduce"></span><span class="tm">11-04 05:45</span><span class="act">减仓<em>10x 目标</em></span><span class="det">价 2,297 · 3,878 → 3,025 · 6.87x · 已实现 -122,286</span></div><div class="step"><span class="dot reduce"></span><span class="tm">11-04 05:49</span><span class="act">减仓<em>10x 目标</em></span><span class="det">价 2,300 · 3,025 → 1,664 · 3.80x · 已实现 -196,654</span></div><div class="step"><span class="dot close"></span><span class="tm">11-04 05:52</span><span class="act">平仓<em>10x 目标</em></span><span class="det">价 2,301 · 1,664 · 3.82x · 已实现 -296,686</span></div></div></div><div class="pos closed">
+<div class="head">
+  <span class="sym">SNDKUSDT</span>
+  <span class="badge long">多头</span>
+  <span class="badge open">2x</span>
+  <span class="badge open">已平仓</span><span class="badge open">10-30 07:45 平</span>
+  <span class="spacer"></span>
+  <span class="pnl up">+3,197<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">10-30 02:39</span><span class="act">新开仓<em>2x 目标</em></span><span class="det">价 1,290 · 503.37 · 0.50x</span></div><div class="step"><span class="dot close"></span><span class="tm">10-30 07:45</span><span class="act">平仓<em>2x 目标</em></span><span class="det">价 1,294 · 503.37 · 0.50x · 已实现 +3,197</span></div></div></div><div class="pos closed">
+<div class="head">
+  <span class="sym">ETHUSDT</span>
+  <span class="badge short">空头</span>
+  <span class="badge open">20x</span>
+  <span class="badge open">已平仓</span><span class="badge open">10-30 02:19 平</span>
+  <span class="spacer"></span>
+  <span class="pnl up">+256,669<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">10-29 21:01</span><span class="act">新开仓<em>10x 目标</em></span><span class="det">价 2,256 · 2,231 · 4.83x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-29 21:19</span><span class="act">加仓<em>10x 目标</em></span><span class="det">价 2,290 · 2,231 → 4,192 · 9.95x</span></div><div class="step"><span class="dot lev"></span><span class="tm">10-29 21:25</span><span class="act">持仓更新（杠杆 10x -&gt; 20x）<em>20x 目标</em></span><span class="det">价 2,285 · 4,192 → 4,192 · 9.72x</span></div><div class="step"><span class="dot close"></span><span class="tm">10-30 02:19</span><span class="act">平仓<em>20x 目标</em></span><span class="det">价 2,208 · 4,192 · 7.06x · 已实现 +256,669</span></div></div></div><div class="pos closed">
+<div class="head">
+  <span class="sym">HYPEUSDT</span>
+  <span class="badge short">空头</span>
+  <span class="badge open">5x</span>
+  <span class="badge open">已平仓</span><span class="badge open">10-29 20:50 平</span>
+  <span class="spacer"></span>
+  <span class="pnl up">+49,094<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">10-29 19:01</span><span class="act">新开仓<em>5x 目标</em></span><span class="det">价 94.32 · 13,213 · 1.25x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-29 19:03</span><span class="act">加仓<em>5x 目标</em></span><span class="det">价 94.14 · 13,213 → 18,532 · 1.74x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-29 20:25</span><span class="act">加仓<em>5x 目标</em></span><span class="det">价 93.33 · 18,532 → 23,897 · 2.19x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-29 20:26</span><span class="act">加仓<em>5x 目标</em></span><span class="det">价 93.24 · 23,897 → 29,262 · 2.68x</span></div><div class="step"><span class="dot close"></span><span class="tm">10-29 20:50</span><span class="act">平仓<em>5x 目标</em></span><span class="det">价 90.60 · 29,262 · 2.42x · 已实现 +49,094</span></div></div></div><div class="pos closed">
+<div class="head">
+  <span class="sym">ETHUSDT</span>
+  <span class="badge long">多头</span>
+  <span class="badge open">10x</span>
+  <span class="badge open">已平仓</span><span class="badge open">10-29 18:39 平</span>
+  <span class="spacer"></span>
+  <span class="pnl down">-91,444<small>已实现盈亏 USDT</small></span>
+</div>
+<div class="track"><div class="step"><span class="dot open"></span><span class="tm">10-28 17:50</span><span class="act">新开仓<em>10x 目标</em></span><span class="det">价 2,346 · 852.88 · 1.82x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-28 17:52</span><span class="act">加仓<em>10x 目标</em></span><span class="det">价 2,346 · 852.88 → 1,279 · 2.73x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-28 18:29</span><span class="act">加仓<em>10x 目标</em></span><span class="det">价 2,346 · 1,279 → 2,558 · 5.45x</span></div><div class="step"><span class="dot add"></span><span class="tm">10-29 15:10</span><span class="act">加仓<em>10x 目标</em></span><span class="det">价 2,364 · 2,558 → 4,476 · 9.08x</span></div><div class="step"><span class="dot reduce"></span><span class="tm">10-29 18:32</span><span class="act">减仓<em>10x 目标</em></span><span class="det">价 2,327 · 4,476 → 2,081 · 4.85x · 已实现 -49,083</span></div><div class="step"><span class="dot reduce"></span><span class="tm">10-29 18:34</span><span class="act">减仓<em>10x 目标</em></span><span class="det">价 2,328 · 2,081 → 1,499 · 3.49x · 已实现 -61,365</span></div><div class="step"><span class="dot reduce"></span><span class="tm">10-29 18:35</span><span class="act">减仓<em>10x 目标</em></span><span class="det">价 2,328 · 1,499 → 842.94 · 1.96x · 已实现 -74,673</span></div><div class="step"><span class="dot close"></span><span class="tm">10-29 18:39</span><span class="act">平仓<em>10x 目标</em></span><span class="det">价 2,330 · 842.94 · 1.96x · 已实现 -91,444</span></div></div></div>
+</main></div></body></html>
