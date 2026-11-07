@@ -128,3 +128,66 @@ class PositionEvent(Base):
     realized: Mapped[float | None] = mapped_column(Float, default=None)
 
     position: Mapped[Position] = relationship(back_populates="events")
+
+
+class CopyPosition(Base):
+    """Our own (shadow, for now) book — one row per round trip we would hold."""
+
+    __tablename__ = "copy_positions"
+    __table_args__ = (
+        Index("ix_copy_position_symbol_side", "symbol", "side", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    side: Mapped[str] = mapped_column(String(8))
+    status: Mapped[str] = mapped_column(String(8), default="open")
+
+    source_position_id: Mapped[int | None] = mapped_column(
+        ForeignKey("positions.id", ondelete="SET NULL"), default=None
+    )
+    opened_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, default=None)
+
+    qty: Mapped[float] = mapped_column(Float, default=0.0)
+    entry: Mapped[float | None] = mapped_column(Float, default=None)
+    notional: Mapped[float] = mapped_column(Float, default=0.0)
+    lev: Mapped[float | None] = mapped_column(Float, default=None)
+    #: realised PnL of our own book, converted from his percentage move
+    realized: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class CopyIntent(Base):
+    """What we would have done for one signal. Never an order by itself."""
+
+    __tablename__ = "copy_intents"
+    __table_args__ = (
+        UniqueConstraint("signal_id", "stage", name="uq_copy_intent_stage"),
+        Index("ix_copy_intent_status", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    signal_id: Mapped[int] = mapped_column(ForeignKey("signals.id", ondelete="CASCADE"))
+    copy_position_id: Mapped[int | None] = mapped_column(
+        ForeignKey("copy_positions.id", ondelete="SET NULL"), default=None
+    )
+    stage: Mapped[str] = mapped_column(String(16), default="shadow")
+
+    action: Mapped[str] = mapped_column(String(16))
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    side: Mapped[str] = mapped_column(String(8))
+
+    equity: Mapped[float] = mapped_column(Float, default=0.0)
+    lev_actual: Mapped[float | None] = mapped_column(Float, default=None)
+    target_notional: Mapped[float] = mapped_column(Float, default=0.0)
+    target_qty: Mapped[float] = mapped_column(Float, default=0.0)
+
+    qty_before: Mapped[float] = mapped_column(Float, default=0.0)
+    delta_qty: Mapped[float] = mapped_column(Float, default=0.0)
+    price: Mapped[float | None] = mapped_column(Float, default=None)
+
+    #: shadow | pending | sent | filled | failed | skipped
+    status: Mapped[str] = mapped_column(String(12), default="shadow")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)

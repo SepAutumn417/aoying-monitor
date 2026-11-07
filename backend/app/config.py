@@ -74,6 +74,14 @@ class Settings(BaseModel):
     tg_sync_interval_seconds: int = int(os.getenv("TG_SYNC_INTERVAL_SECONDS", "300"))
     tg_auto_start: bool = os.getenv("TG_AUTO_START", "").lower() in {"1", "true", "yes"}
 
+    # Copy-trading sizing. In shadow mode there is no exchange account to read,
+    # so this stands in for our futures equity. Once Bitget credentials exist the
+    # live balance takes over and this value is ignored.
+    copy_mode: str = os.getenv("COPY_MODE", "shadow")
+    copy_equity_usdt: float = float(os.getenv("COPY_EQUITY_USDT", "1000"))
+    copy_paused: bool = os.getenv("COPY_PAUSED", "").lower() in {"1", "true", "yes"}
+
+
     cors_origins: list[str] = _env_list(
         "CORS_ORIGINS",
         ["http://localhost:5173", "http://127.0.0.1:5173"],

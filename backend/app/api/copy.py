@@ -14,8 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.copy import ledger
-from app.copy_models import Position, PositionEvent, Signal
+from app.config import get_settings
+from app.copy import ledger, planner
+from app.copy_models import CopyIntent, CopyPosition, Position, PositionEvent, Signal
 from app.db import get_db
 from app.models import User
 from app.security import current_user
@@ -233,4 +234,146 @@ async def rebuild_signals(
         positions=stats.positions,
         events=stats.events,
         orphans=stats.orphans,
+    )
+
+
+class CopyIntentItem(BaseModel):
+    id: int
+    signal_id: int
+    action: str
+    symbol: str
+    side: str
+    equity: float
+    lev_actual: float | None
+    target_notional: float
+    target_qty: float
+    qty_before: float
+    delta_qty: float
+    price: float | None
+    status: str
+    note: str
+    created_at: datetime
+
+
+class CopyIntentList(BaseModel):
+    intents: list[CopyIntentItem]
+    count: int
+
+
+class CopyBookItem(BaseModel):
+    id: int
+    symbol: str
+    side: str
+    status: str
+    qty: float
+    entry: float | None
+    notional: float
+    lev: float | None
+    realized: float
+    opened_at: datetime
+    closed_at: datetime | None
+
+
+class CopyBook(BaseModel):
+    positions: list[CopyBookItem]
+    count: int
+    realized: float
+
+
+class ReplayRequest(BaseModel):
+    equity: float | None = None
+
+
+class ReplayResult(BaseModel):
+    signals: int
+    intents: int
+    skipped: int
+    realized: float
+
+
+@router.get("/copy/intents", response_model=CopyIntentList)
+async def list_intents(
+    limit: int = Query(default=100, ge=1, le=500),
+    symbol: str | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(current_user),
+) -> CopyIntentList:
+    stmt = select(CopyIntent).order_by(CopyIntent.id.desc()).limit(limit)
+    if symbol:
+        stmt = stmt.where(CopyIntent.symbol == symbol.upper())
+    if status_filter:
+        stmt = stmt.where(CopyIntent.status == status_filter)
+    rows = (await db.scalars(stmt)).all()
+    return CopyIntentList(
+        intents=[
+            CopyIntentItem(
+                id=r.id,
+                signal_id=r.signal_id,
+                action=r.action,
+                symbol=r.symbol,
+                side=r.side,
+                equity=r.equity,
+                lev_actual=r.lev_actual,
+                target_notional=r.target_notional,
+                target_qty=r.target_qty,
+                qty_before=r.qty_before,
+                delta_qty=r.delta_qty,
+                price=r.price,
+                status=r.status,
+                note=r.note,
+                created_at=r.created_at,
+            )
+            for r in rows
+        ],
+        count=len(rows),
+    )
+
+
+@router.get("/copy/book", response_model=CopyBook)
+async def copy_book(
+    status_filter: str | None = Query(default=None, alias="status"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(current_user),
+) -> CopyBook:
+    stmt = select(CopyPosition).order_by(CopyPosition.opened_at.desc())
+    if status_filter:
+        stmt = stmt.where(CopyPosition.status == status_filter)
+    rows = (await db.scalars(stmt)).all()
+    closed = [r for r in rows if r.status == "closed"]
+    return CopyBook(
+        positions=[
+            CopyBookItem(
+                id=r.id,
+                symbol=r.symbol,
+                side=r.side,
+                status=r.status,
+                qty=r.qty,
+                entry=r.entry,
+                notional=r.notional,
+                lev=r.lev,
+                realized=r.realized,
+                opened_at=r.opened_at,
+                closed_at=r.closed_at,
+            )
+            for r in rows
+        ],
+        count=len(rows),
+        realized=round(sum(r.realized for r in closed), 2),
+    )
+
+
+@router.post("/copy/replay", response_model=ReplayResult)
+async def replay_copy(
+    body: ReplayRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(current_user),
+) -> ReplayResult:
+    equity = (body.equity if body and body.equity else None) or get_settings().copy_equity_usdt
+    stats = await planner.replay(db, equity=equity)
+    return ReplayResult(
+        signals=stats.signals,
+        intents=stats.intents,
+        skipped=stats.skipped,
+        realized=stats.realized,
     )
