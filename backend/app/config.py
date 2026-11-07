@@ -1,7 +1,23 @@
 import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import BaseModel
+
+# `.env` sits next to `backend/` (the repo root). Loading it here means
+# `uvicorn app.main:app` on a laptop picks up the same file Docker Compose
+# reads, instead of silently running on defaults. Values already present in the
+# real environment win, so tests and container overrides still take precedence.
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+if _ENV_FILE.is_file():
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(_ENV_FILE, override=False)
+    except ModuleNotFoundError:
+        # python-dotenv is optional: without it the app just reads the process
+        # environment, which is what Docker passes in anyway.
+        pass
 
 
 def _env_list(name: str, default: list[str]) -> list[str]:
