@@ -7,6 +7,8 @@ import {
   ApiError,
   type ApiTelegramDialog,
   type ApiTelegramMessage,
+  type ApiTelegramTopic,
+  type TelegramFocus,
 } from "../../lib/api";
 import { useLive } from "../../lib/live";
 
@@ -41,6 +43,19 @@ const RANGE_LABELS: Record<RangeFilter, string> = {
   all: "全部时间",
 };
 
+const FOCUS_LABELS: Record<TelegramFocus, string> = {
+  important: "重点动态",
+  owner: "本人发言",
+  all: "全部原文",
+};
+const ROLE_LABELS: Record<ApiTelegramMessage["sender_role"], string> = {
+  owner: "熬鹰本人",
+  signal_bot: "交易机器人报告",
+  assistant: "助理",
+  member: "群友",
+};
+const TARGET_CHAT_ID = -1002568478710;
+
 const chipClass = (active: boolean) =>
   `rounded-lg border px-2.5 py-1.5 text-xs transition ${
     active
@@ -52,6 +67,9 @@ export function TimelinePage() {
   const live = useLive();
   const [messages, setMessages] = useState<ApiTelegramMessage[]>([]);
   const [dialogs, setDialogs] = useState<ApiTelegramDialog[]>([]);
+  const [topics, setTopics] = useState<ApiTelegramTopic[]>([]);
+  const [topic, setTopic] = useState<number | null>(null);
+  const [focus, setFocus] = useState<TelegramFocus>("important");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -76,7 +94,9 @@ export function TimelinePage() {
     try {
       const data = await api.telegramMessages({
         limit: 100,
-        chatId: chat ?? undefined,
+        chatId: chat ?? TARGET_CHAT_ID,
+        topicId: topic ?? undefined,
+        focus,
         kind: kind === "all" ? undefined : kind,
         since,
         // The whole point of the edit archive: the operator can see what the
@@ -89,7 +109,7 @@ export function TimelinePage() {
     } finally {
       setLoading(false);
     }
-  }, [chat, kind, since]);
+  }, [chat, topic, focus, kind, since]);
 
   useEffect(() => {
     void load();
@@ -102,6 +122,7 @@ export function TimelinePage() {
       .telegramDialogs()
       .then((list) => setDialogs(list.filter((item) => item.enabled)))
       .catch(() => setDialogs([]));
+    void api.telegramTopics(TARGET_CHAT_ID).then(setTopics).catch(() => setTopics([]));
   }, []);
 
   // A new Telegram message arrives over the socket; reload so edits and
@@ -174,6 +195,21 @@ export function TimelinePage() {
         ))}
       </div>
 
+      <div className="mb-2 flex flex-wrap gap-1.5" aria-label="分区筛选">
+        <button type="button" aria-pressed={topic === null} onClick={() => setTopic(null)} className={chipClass(topic === null)}>全部分区</button>
+        {topics.filter((item) => item.enabled).map((item) => (
+          <button key={item.id} type="button" aria-pressed={topic === item.topic_id} onClick={() => setTopic(item.topic_id)} className={chipClass(topic === item.topic_id)}>{item.title}</button>
+        ))}
+      </div>
+      <div className="mb-2 flex flex-wrap gap-1.5" aria-label="关注内容">
+        {(Object.keys(FOCUS_LABELS) as TelegramFocus[]).map((value) => (
+          <button key={value} type="button" aria-pressed={focus === value} onClick={() => setFocus(value)} className={chipClass(focus === value)}>{FOCUS_LABELS[value]}</button>
+        ))}
+      </div>
+      <p className="mb-3 text-xs text-mist-400">
+        当前：{FOCUS_LABELS[focus]} · {topic === null ? "全部分区" : topics.find((item) => item.topic_id === topic)?.title || "所选分区"}。
+        {focus === "important" ? "仅显示交易区机器人报告、禁言群和聊天群的熬鹰本人发言；消息通知默认不纳入。" : focus === "owner" ? "按固定账号识别本人，不按昵称匹配。" : "包含群友和事务消息，不代表熬鹰观点或交易。"}
+      </p>
       <div className="mb-3 flex flex-wrap items-center gap-4">
         <div className="flex flex-wrap gap-1.5">
           {(Object.keys(KIND_LABELS) as KindFilter[]).map((value) => (
@@ -224,7 +260,10 @@ export function TimelinePage() {
                     <span className="grid h-5 w-5 place-items-center rounded bg-mist-400/15">
                       <MessageSquare className="h-3 w-3 text-mist-200" />
                     </span>
-                    <span className="text-xs text-mist-200">{message.dialog_title}</span>
+                    <span className="text-xs text-mist-200">{message.topic_title || "未分类"}</span>
+                    <span className="rounded border border-mist-400/15 px-1.5 py-0.5 text-[10px] text-mist-200">
+                      {ROLE_LABELS[message.sender_role] || "身份未识别"}
+                    </span>
                     <span className="text-[11px] text-mist-400">
                       {message.sender_name || "未知发送者"}
                     </span>
@@ -293,9 +332,7 @@ export function TimelinePage() {
             })}
             {rows.length === 0 ? (
               <li className="px-4 py-12 text-center text-sm text-mist-400">
-                {messages.length === 0
-                  ? "还没有采集到发言。先在「数据源」里完成 Telegram 登录并勾选会话。"
-                  : "当前筛选条件下没有消息，换个类型或时间范围试试。"}
+                当前筛选下没有消息。可切换「全部原文」或其他分区、时间范围；若仍为空，请到「数据源」检查四区同步状态。
               </li>
             ) : null}
           </ul>

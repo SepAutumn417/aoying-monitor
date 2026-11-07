@@ -8,6 +8,7 @@ import {
   type ApiCollectorStatus,
   type ApiTelegramDialog,
   type ApiTelegramStatus,
+  type ApiTelegramTopic,
 } from "../../lib/api";
 import { useLive } from "../../lib/live";
 
@@ -29,6 +30,7 @@ function TelegramPanel() {
   const live = useLive();
   const [status, setStatus] = useState<ApiTelegramStatus | null>(null);
   const [dialogs, setDialogs] = useState<ApiTelegramDialog[]>([]);
+  const [topics, setTopics] = useState<ApiTelegramTopic[]>([]);
   const [discovered, setDiscovered] = useState<
     { chat_id: number; title: string; kind: string; username: string; followed: boolean }[]
   >([]);
@@ -37,12 +39,15 @@ function TelegramPanel() {
 
   const load = useCallback(async () => {
     try {
-      const [nextStatus, nextDialogs] = await Promise.all([
+      const [nextStatus, nextDialogs, nextTopics] = await Promise.all([
         api.telegramStatus(),
         api.telegramDialogs(),
+        api.telegramTopics(-1002568478710),
       ]);
       setStatus(nextStatus);
       setDialogs(nextDialogs);
+      setTopics(nextTopics);
+      setError("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "读取 Telegram 状态失败");
     }
@@ -202,6 +207,20 @@ function TelegramPanel() {
         ) : null}
       </ul>
 
+      <div className="border-t border-mist-400/[0.07] px-4 py-3">
+        <h3 className="text-xs font-medium text-mist-200">四个分区 · 仅监控熬鹰书友会</h3>
+        <p className="mt-1 text-[11px] text-mist-400">交易信号优先；禁言群和聊天群关注本人发言；消息通知保留原文、默认静默。</p>
+        <ul className="mt-2 divide-y divide-mist-400/[0.07]">
+          {topics.map((item) => (
+            <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
+              <span className="text-mist-200">{item.title}</span>
+              <span className="text-mist-400">{item.messages} 条 · {item.last_synced_at ? `上次同步 ${new Date(item.last_synced_at).toLocaleString("zh-CN")}` : "尚未完成同步"}</span>
+              {item.last_error ? <p className="w-full text-danger">{item.last_error}</p> : null}
+            </li>
+          ))}
+        </ul>
+        {topics.length === 0 ? <p className="mt-2 text-xs text-mist-400">分区尚未登记。关注书友会并启动采集后查看同步状态。</p> : null}
+      </div>
       {discovered.length > 0 ? (
         <div className="border-t border-mist-400/[0.07]">
           <div className="flex items-center justify-between px-4 py-2">

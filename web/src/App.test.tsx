@@ -75,8 +75,12 @@ beforeEach(() => {
           messages: [
             {
               id: 1,
-              chat_id: -1001,
-              dialog_title: "熬鹰｜观点群",
+              chat_id: -1002568478710,
+              dialog_title: "熬鹰书友会",
+              topic_id: 926111,
+              topic_title: "熬鹰交易信号推送",
+              sender_id: 8797733775,
+              sender_role: "signal_bot",
               message_id: 10,
               sender_name: "熬鹰 资本",
               text: "开多 BTC 2x",
@@ -89,6 +93,17 @@ beforeEach(() => {
           ],
           count: 1,
         });
+      }
+      if (url.startsWith("/api/telegram/topics")) {
+        return json([
+          { id: 1, chat_id: -1002568478710, topic_id: 926111, title: "熬鹰交易信号推送", enabled: true, last_message_id: 10, last_synced_at: new Date().toISOString(), messages: 20, last_error: "" },
+          { id: 2, chat_id: -1002568478710, topic_id: 748, title: "禁言群", enabled: true, last_message_id: 9, last_synced_at: null, messages: 0, last_error: "" },
+          { id: 3, chat_id: -1002568478710, topic_id: 1, title: "聊天群", enabled: true, last_message_id: 8, last_synced_at: null, messages: 0, last_error: "" },
+          { id: 4, chat_id: -1002568478710, topic_id: 1006930, title: "消息通知", enabled: true, last_message_id: 7, last_synced_at: null, messages: 0, last_error: "" },
+        ]);
+      }
+      if (url.startsWith("/api/telegram/status")) {
+        return json({ collector: { state: "running", detail: "", started_at: null, last_message_at: null, messages_total: 20, dialogs: 1 }, account: { id: 1, label: "测试账号", display_name: "测试账号", username: "", phone: "", last_connected_at: null, last_error: "" }, dialogs: 1, followed: 1, messages: 20 });
       }
       if (url.startsWith("/api/telegram/dialogs")) {
         return json([]);
@@ -137,6 +152,29 @@ describe("App shell", () => {
     expect(await screen.findByText("开多 BTC 2x")).toBeInTheDocument();
     expect(screen.getByText("含媒体")).toBeInTheDocument();
     expect(screen.getByText("近 7 天")).toBeInTheDocument();
+  });
+
+  it("defaults to important messages and combines focus with topic filters", async () => {
+    renderAt("/timeline");
+    await screen.findByText("开多 BTC 2x");
+    expect(screen.getByText("交易机器人报告")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("focus=important"), expect.anything());
+    fireEvent.click(await screen.findByRole("button", { name: "禁言群" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/topic_id=748.*focus=important/), expect.anything()));
+    fireEvent.click(screen.getByRole("button", { name: "本人发言" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/topic_id=748.*focus=owner/), expect.anything()));
+    fireEvent.click(screen.getByRole("button", { name: "全部原文" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/topic_id=748.*focus=all/), expect.anything()));
+  });
+
+  it("shows all four topic sync states in sources", async () => {
+    renderAt("/sources");
+    expect(await screen.findByText("四个分区 · 仅监控熬鹰书友会")).toBeInTheDocument();
+    expect(screen.getByText("熬鹰交易信号推送")).toBeInTheDocument();
+    expect(screen.getByText("禁言群")).toBeInTheDocument();
+    expect(screen.getByText("聊天群")).toBeInTheDocument();
+    expect(screen.getByText("消息通知")).toBeInTheDocument();
+    expect(screen.getAllByText(/尚未完成同步/).length).toBe(3);
   });
 
   it("renders alerts", () => {

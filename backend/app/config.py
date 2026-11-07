@@ -9,6 +9,10 @@ from pydantic import BaseModel
 # reads, instead of silently running on defaults. Values already present in the
 # real environment win, so tests and container overrides still take precedence.
 _ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+# Telegram relative file paths are resolved against the repo root, not the
+# shell's cwd. Without this, `python -m app.telegram_login` run from `backend/`
+# and `uvicorn` run from the repo root would write two different session files.
+REPO_ROOT = _ENV_FILE.parent
 if _ENV_FILE.is_file():
     try:
         from dotenv import load_dotenv
@@ -18,6 +22,14 @@ if _ENV_FILE.is_file():
         # python-dotenv is optional: without it the app just reads the process
         # environment, which is what Docker passes in anyway.
         pass
+
+
+def _path(value: str) -> str:
+    """Anchor a configured relative path to the repo root."""
+    candidate = Path(value).expanduser()
+    if not candidate.is_absolute():
+        candidate = REPO_ROOT / candidate
+    return str(candidate)
 
 
 def _env_list(name: str, default: list[str]) -> list[str]:
@@ -40,6 +52,7 @@ class Settings(BaseModel):
     app_version: str = "0.3.0"
 
     # Postgres in Docker; SQLite for a laptop run and for the test suite.
+    # Relative SQLite URLs follow the process cwd; local services run from repo root.
     database_url: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./aoying.db")
 
     jwt_secret: str = os.getenv("JWT_SECRET", "dev-only-change-me")
@@ -55,8 +68,8 @@ class Settings(BaseModel):
     # session file is produced once by `python -m app.telegram_login`.
     tg_api_id: int | None = int(os.environ["TG_API_ID"]) if os.getenv("TG_API_ID") else None
     tg_api_hash: str = os.getenv("TG_API_HASH", "")
-    tg_session_path: str = os.getenv("TG_SESSION_PATH", "./data/telegram.session")
-    tg_media_dir: str = os.getenv("TG_MEDIA_DIR", "./data/media")
+    tg_session_path: str = _path(os.getenv("TG_SESSION_PATH", "./data/telegram.session"))
+    tg_media_dir: str = _path(os.getenv("TG_MEDIA_DIR", "./data/media"))
     tg_backfill_limit: int = int(os.getenv("TG_BACKFILL_LIMIT", "200"))
     tg_sync_interval_seconds: int = int(os.getenv("TG_SYNC_INTERVAL_SECONDS", "300"))
     tg_auto_start: bool = os.getenv("TG_AUTO_START", "").lower() in {"1", "true", "yes"}

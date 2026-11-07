@@ -206,7 +206,7 @@ def test_sync_requires_running_collector() -> None:
     assert "未运行" in response.json()["detail"]
 
 
-@pytest.mark.parametrize("chat_id", [CHAT_ID])
+@pytest.mark.parametrize("chat_id", [-1002568478710])
 def test_follow_and_unfollow_dialog(chat_id: int) -> None:
     with TestClient(app) as client:
         login = client.post("/api/auth/login", json={**ADMIN, "device": {"name": "t3"}}).json()

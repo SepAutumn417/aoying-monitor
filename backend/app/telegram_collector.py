@@ -26,8 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import SessionLocal
 from app.events import append_event
 from app.models import utcnow
-from app.telegram_models import TelegramAccount, TelegramDialog
+from app.telegram_models import TelegramAccount, TelegramDialog, TelegramTopic
 from app.telegram_store import media_kind_of, message_payload, normalize, upsert_message
+from app.telegram_topics import TARGET_CHAT_ID, ensure_topics, topic_id_of
 
 log = logging.getLogger("aoying.telegram")
 
@@ -118,7 +119,9 @@ class TelegramCollector:
                 self.status.detail = f"已连接 {len(dialogs)} 个会话"
                 self.status.dialogs = len(dialogs)
 
-                self._task = asyncio.create_task(self._backfill(dialogs), name="tg-backfill")
+                self._task = asyncio.create_task(
+                    self._initial_backfill(dialogs), name="tg-backfill"
+                )
                 if self.sync_interval > 0:
                     self._sync_task = asyncio.create_task(self._sync_loop(), name="tg-sync")
                 await self._touch_connected()
@@ -128,6 +131,10 @@ class TelegramCollector:
                 self.status.detail = str(exc)
                 await self._record_error(str(exc))
             return self.status
+
+    async def _initial_backfill(self, dialogs: list[TelegramDialog]) -> None:
+        async with self._sync_lock:
+            await self._backfill(dialogs)
 
     async def stop(self) -> CollectorStatus:
         async with self._lock:
@@ -230,10 +237,18 @@ class TelegramCollector:
     # -- persistence -------------------------------------------------------
 
     async def _load_account(self) -> None:
-        if self.account_id is None:
-            return
         async with SessionLocal() as db:
-            account = await db.get(TelegramAccount, self.account_id)
+            if self.account_id is None:
+                account = await db.scalar(
+                    select(TelegramAccount)
+                    .where(TelegramAccount.is_enabled.is_(True))
+                    .order_by(TelegramAccount.id)
+                    .limit(1)
+                )
+                if account is not None:
+                    self.account_id = account.id
+            else:
+                account = await db.get(TelegramAccount, self.account_id)
             if account is not None:
                 account.last_connected_at = utcnow()
                 account.last_error = ""
@@ -256,9 +271,20 @@ class TelegramCollector:
             stmt = select(TelegramDialog).where(TelegramDialog.enabled.is_(True))
             if self.account_id is not None:
                 stmt = stmt.where(TelegramDialog.account_id == self.account_id)
-            return list(await db.scalars(stmt))
+            rows = list(await db.scalars(stmt))
+            if self.client_factory is None:
+                for row in rows:
+                    if row.chat_id != TARGET_CHAT_ID:
+                        row.enabled = False
+                await db.commit()
+                rows = [row for row in rows if row.chat_id == TARGET_CHAT_ID]
+            for row in rows:
+                await ensure_topics(db, row)
+            return rows
 
     async def _dialog_for(self, db: AsyncSession, chat_id: int) -> TelegramDialog | None:
+        if self.client_factory is None and chat_id != TARGET_CHAT_ID:
+            return None
         stmt = select(TelegramDialog).where(
             TelegramDialog.chat_id == chat_id, TelegramDialog.enabled.is_(True)
         )
@@ -316,6 +342,18 @@ class TelegramCollector:
         return {"skipped": False, "dialogs": len(dialogs)}
 
     async def _backfill_dialog(self, client: Any, dialog: TelegramDialog) -> None:
+        if self.client_factory is None and dialog.chat_id != TARGET_CHAT_ID:
+            return
+        if dialog.chat_id == TARGET_CHAT_ID:
+            from app.telegram_forum_sync import sync_forum
+
+            await sync_forum(
+                client,
+                dialog,
+                self.backfill_limit,
+                download=self._download if self.download_media else None,
+            )
+            return
         iter_messages = getattr(client, "iter_messages", None)
         if iter_messages is None:
             return
@@ -333,10 +371,7 @@ class TelegramCollector:
             # First contact: take the most recent N. Asking for `reverse=True`
             # with no `min_id` would return the *oldest* messages in the chat
             # instead of the recent ones the operator cares about.
-            batch = [
-                raw
-                async for raw in iter_messages(dialog.chat_id, limit=self.backfill_limit)
-            ]
+            batch = [raw async for raw in iter_messages(dialog.chat_id, limit=self.backfill_limit)]
             for raw in reversed(batch):
                 await self.ingest_message(
                     raw, dialog.chat_id, edited=False, download=self.download_media
@@ -360,7 +395,19 @@ class TelegramCollector:
             if dialog is None:
                 return None
 
+            topic = None
+            if chat_id == TARGET_CHAT_ID:
+                topic = await db.scalar(
+                    select(TelegramTopic).where(
+                        TelegramTopic.dialog_id == dialog.id,
+                        TelegramTopic.topic_id == topic_id_of(raw),
+                        TelegramTopic.enabled.is_(True),
+                    )
+                )
+                if topic is None:
+                    return None
             data = normalize(raw)
+            data["chat_id"] = chat_id
             row, outcome = await upsert_message(db, dialog, data)
             if outcome == "unchanged":
                 return None
@@ -393,6 +440,8 @@ class TelegramCollector:
 
         if not message_ids:
             return
+        if self.client_factory is None and chat_id is not None and chat_id != TARGET_CHAT_ID:
+            return
         if chat_id is None:
             log.debug("ignoring delete update without chat_id: %s", message_ids[:10])
             return
@@ -414,9 +463,7 @@ class TelegramCollector:
                 payload["deleted"] = True
                 await append_event(db, "telegram.message.deleted", payload)
 
-    async def _download(
-        self, db: AsyncSession, row: Any, raw: Any, dialog: TelegramDialog
-    ) -> None:
+    async def _download(self, db: AsyncSession, row: Any, raw: Any, dialog: TelegramDialog) -> None:
         client = self._client
         if client is None:
             return
@@ -471,5 +518,3 @@ def get_collector() -> TelegramCollector:
             sync_interval=settings.tg_sync_interval_seconds,
         )
     return collector
-
-

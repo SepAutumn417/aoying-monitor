@@ -11,14 +11,22 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import User, utcnow
 from app.security import current_user
 from app.telegram_collector import get_collector
-from app.telegram_models import TelegramAccount, TelegramDialog, TelegramMessage
+from app.telegram_models import TelegramAccount, TelegramDialog, TelegramMessage, TelegramTopic
+from app.telegram_topics import (
+    OWNER_ID,
+    SIGNAL_BOT_ID,
+    TARGET_CHAT_ID,
+    ensure_topics,
+    sender_role,
+    topic_title,
+)
 
 router = APIRouter(prefix="/api/telegram", tags=["telegram"])
 
@@ -35,6 +43,18 @@ class DialogItem(BaseModel):
     messages: int = 0
 
 
+class TopicItem(BaseModel):
+    id: int
+    chat_id: int
+    topic_id: int
+    title: str
+    enabled: bool
+    last_message_id: int
+    last_synced_at: datetime | None
+    messages: int = 0
+    last_error: str = ""
+
+
 class MessageRevisionItem(BaseModel):
     text: str
     media_kind: str
@@ -47,6 +67,11 @@ class MessageItem(BaseModel):
     dialog_title: str
     message_id: int
     sender_name: str
+    sender_id: int | None = None
+    topic_id: int | None = None
+    topic_title: str = "未分类"
+    sender_role: str = "member"
+    reply_to: int | None = None
     text: str
     media_kind: str
     posted_at: datetime
@@ -64,6 +89,9 @@ class DiscoveryItem(BaseModel):
 
 
 async def _primary_account(db: AsyncSession) -> TelegramAccount | None:
+    account_id = get_collector().account_id
+    if account_id is not None:
+        return await db.get(TelegramAccount, account_id)
     return await db.scalar(select(TelegramAccount).order_by(TelegramAccount.id).limit(1))
 
 
@@ -141,43 +169,74 @@ async def list_dialogs(
     ]
 
 
+@router.get("/topics", response_model=list[TopicItem])
+async def list_topics(
+    chat_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(current_user),
+) -> list[TopicItem]:
+    account = await _primary_account(db)
+    if account is None:
+        return []
+    stmt = (
+        select(TelegramTopic, TelegramDialog.chat_id)
+        .join(TelegramDialog, TelegramDialog.id == TelegramTopic.dialog_id)
+        .where(TelegramDialog.account_id == account.id)
+    )
+    if chat_id is not None:
+        stmt = stmt.where(TelegramDialog.chat_id == chat_id)
+    rows = (await db.execute(stmt.order_by(TelegramTopic.topic_id))).all()
+    counts: dict[tuple[int, int | None], int] = {}
+    for dialog_id, topic_id, count in (
+        await db.execute(
+            select(TelegramMessage.dialog_id, TelegramMessage.topic_id, func.count()).group_by(
+                TelegramMessage.dialog_id, TelegramMessage.topic_id
+            )
+        )
+    ).all():
+        counts[(dialog_id, topic_id)] = count
+    return [
+        TopicItem(
+            id=row.id,
+            chat_id=chat,
+            topic_id=row.topic_id,
+            title=row.title,
+            enabled=row.enabled,
+            last_message_id=row.last_message_id,
+            last_synced_at=row.last_synced_at,
+            last_error=row.last_error,
+            messages=counts.get((row.dialog_id, row.topic_id), 0),
+        )
+        for row, chat in rows
+    ]
+
+
 @router.get("/discover", response_model=list[DiscoveryItem])
 async def discover_dialogs(
     db: AsyncSession = Depends(get_db), user: User = Depends(current_user)
 ) -> list[DiscoveryItem]:
-    """List the chats this account is in, so the operator can pick the 4 groups.
-
-    Requires a running collector: discovery reads Telegram directly instead of
-    guessing from the database.
-    """
+    """Read only the approved forum; never enumerate unrelated private chats."""
 
     collector = get_collector()
     client = collector._client  # noqa: SLF001 - deliberate read-only peek
     if client is None or not collector.running:
         raise HTTPException(status.HTTP_409_CONFLICT, "采集器未运行，先启动 Telegram 采集")
     try:
-        chats = await client.get_dialogs(limit=200)
+        entity = await client.get_entity(TARGET_CHAT_ID)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"读取会话列表失败：{exc}") from exc
 
     followed = set(await db.scalars(select(TelegramDialog.chat_id)))
 
-    out: list[DiscoveryItem] = []
-    for chat in chats:
-        chat_id = getattr(chat, "id", None)
-        if chat_id is None:
-            continue
-        entity = getattr(chat, "entity", chat)
-        out.append(
-            DiscoveryItem(
-                chat_id=int(chat_id),
-                title=str(getattr(chat, "title", None) or getattr(entity, "title", "") or chat_id),
-                kind=_kind_of(entity),
-                username=str(getattr(entity, "username", "") or ""),
-                followed=int(chat_id) in followed,
-            )
+    return [
+        DiscoveryItem(
+            chat_id=TARGET_CHAT_ID,
+            title=str(getattr(entity, "title", "") or "熬鹰书友会"),
+            kind=_kind_of(entity),
+            username=str(getattr(entity, "username", "") or ""),
+            followed=TARGET_CHAT_ID in followed,
         )
-    return out
+    ]
 
 
 @router.post("/dialogs/{chat_id}/follow")
@@ -186,6 +245,8 @@ async def follow_dialog(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(current_user),
 ) -> dict[str, Any]:
+    if chat_id != TARGET_CHAT_ID:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "当前只允许关注熬鹰书友会")
     dialog = await db.scalar(select(TelegramDialog).where(TelegramDialog.chat_id == chat_id))
     if dialog is None:
         account = await _primary_account(db)
@@ -202,6 +263,7 @@ async def follow_dialog(
         dialog.enabled = True
     await db.commit()
     await db.refresh(dialog)
+    await ensure_topics(db, dialog)
     # Telethon bakes the chat list into the event filter, so the live listener
     # has to be rebuilt or this chat would only start streaming after a restart.
     collector = get_collector()
@@ -232,6 +294,8 @@ async def list_messages(
     limit: int = 50,
     before_id: int | None = None,
     chat_id: int | None = None,
+    topic_id: int | None = None,
+    focus: str | None = None,
     include_deleted: bool = False,
     include_revisions: bool = False,
     kind: str | None = None,
@@ -247,14 +311,54 @@ async def list_messages(
     arithmetic.
     """
 
+    if focus not in (None, "all", "important", "owner"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"未知的重点筛选：{focus}")
+    account = await _primary_account(db)
+    if account is None:
+        return {"messages": [], "count": 0}
     limit = max(1, min(limit, 200))
-    stmt = select(TelegramMessage, TelegramDialog.title).join(
-        TelegramDialog, TelegramDialog.id == TelegramMessage.dialog_id
+    stmt = (
+        select(TelegramMessage, TelegramDialog.title)
+        .join(TelegramDialog, TelegramDialog.id == TelegramMessage.dialog_id)
+        .where(TelegramDialog.account_id == account.id)
     )
+    if topic_id is not None:
+        stmt = stmt.where(TelegramMessage.topic_id == topic_id)
+    if focus in ("important", "owner"):
+        stmt = stmt.where(TelegramMessage.chat_id == TARGET_CHAT_ID)
+        if focus == "owner":
+            stmt = stmt.where(TelegramMessage.sender_id == OWNER_ID)
+        else:
+            stmt = stmt.where(
+                or_(
+                    and_(
+                        TelegramMessage.topic_id == 926111,
+                        TelegramMessage.sender_id == SIGNAL_BOT_ID,
+                    ),
+                    and_(
+                        TelegramMessage.topic_id.in_([1, 748]),
+                        TelegramMessage.sender_id == OWNER_ID,
+                    ),
+                )
+            )
     if chat_id is not None:
         stmt = stmt.where(TelegramMessage.chat_id == chat_id)
+    sort_time = func.coalesce(TelegramMessage.posted_at, TelegramMessage.created_at)
     if before_id is not None:
-        stmt = stmt.where(TelegramMessage.id < before_id)
+        cursor = await db.scalar(
+            select(TelegramMessage)
+            .join(TelegramDialog, TelegramDialog.id == TelegramMessage.dialog_id)
+            .where(TelegramDialog.account_id == account.id, TelegramMessage.id == before_id)
+        )
+        if cursor is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "无效的消息分页游标")
+        cursor_time = cursor.posted_at or cursor.created_at
+        stmt = stmt.where(
+            or_(
+                sort_time < cursor_time,
+                and_(sort_time == cursor_time, TelegramMessage.id < before_id),
+            )
+        )
     if since is not None:
         stmt = stmt.where(TelegramMessage.posted_at >= since)
     if kind == "media":
@@ -268,7 +372,7 @@ async def list_messages(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"未知的消息类型筛选：{kind}")
     if not include_deleted:
         stmt = stmt.where(TelegramMessage.deleted_at.is_(None))
-    stmt = stmt.order_by(TelegramMessage.id.desc()).limit(limit)
+    stmt = stmt.order_by(sort_time.desc(), TelegramMessage.id.desc()).limit(limit)
 
     rows = (await db.execute(stmt)).all()
 
@@ -298,6 +402,11 @@ async def list_messages(
             dialog_title=title or str(message.chat_id),
             message_id=message.message_id,
             sender_name=message.sender_name,
+            sender_id=message.sender_id,
+            sender_role=sender_role(message.chat_id, message.sender_id),
+            topic_id=message.topic_id,
+            topic_title=topic_title(message.chat_id, message.topic_id),
+            reply_to=message.reply_to,
             text=message.text,
             media_kind=message.media_kind,
             posted_at=message.posted_at,

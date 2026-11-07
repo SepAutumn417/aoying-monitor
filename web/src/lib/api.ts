@@ -94,6 +94,20 @@ export interface ApiTelegramDialog {
   messages: number;
 }
 
+export interface ApiTelegramTopic {
+  id: number;
+  chat_id: number;
+  topic_id: number;
+  title: string;
+  enabled: boolean;
+  last_message_id: number;
+  last_synced_at: string | null;
+  messages: number;
+  last_error: string;
+}
+
+export type TelegramFocus = "important" | "owner" | "all";
+
 export interface ApiMessageRevision {
   text: string;
   media_kind: string;
@@ -104,6 +118,10 @@ export interface ApiTelegramMessage {
   id: number;
   chat_id: number;
   dialog_title: string;
+  topic_id: number | null;
+  topic_title: string;
+  sender_id: number | null;
+  sender_role: "owner" | "signal_bot" | "assistant" | "member";
   message_id: number;
   sender_name: string;
   text: string;
@@ -263,6 +281,10 @@ export const api = {
   telegramDialogs() {
     return request<ApiTelegramDialog[]>("/api/telegram/dialogs");
   },
+  telegramTopics(chatId?: number) {
+    const query = chatId === undefined ? "" : `?chat_id=${chatId}`;
+    return request<ApiTelegramTopic[]>(`/api/telegram/topics${query}`);
+  },
   telegramDiscover() {
     return request<
       { chat_id: number; title: string; kind: string; username: string; followed: boolean }[]
@@ -287,6 +309,8 @@ export const api = {
       kind?: "media" | "edited" | "deleted";
       since?: string;
       includeRevisions?: boolean;
+      topicId?: number;
+      focus?: TelegramFocus;
     } = {},
   ) {
     const query = new URLSearchParams();
@@ -296,6 +320,8 @@ export const api = {
     if (params.kind) query.set("kind", params.kind);
     if (params.since) query.set("since", params.since);
     if (params.includeRevisions) query.set("include_revisions", "true");
+    if (params.topicId !== undefined) query.set("topic_id", String(params.topicId));
+    if (params.focus) query.set("focus", params.focus);
     return request<{ messages: ApiTelegramMessage[]; count: number }>(
       `/api/telegram/messages?${query.toString()}`,
     );

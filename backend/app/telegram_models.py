@@ -69,6 +69,27 @@ class TelegramDialog(Base):
     account: Mapped[TelegramAccount] = relationship(back_populates="dialogs")
 
 
+class TelegramTopic(Base):
+    """Independent sync state for one explicitly monitored forum topic."""
+
+    __tablename__ = "telegram_topics"
+    __table_args__ = (UniqueConstraint("dialog_id", "topic_id", name="uq_telegram_topic"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dialog_id: Mapped[int] = mapped_column(
+        ForeignKey("telegram_dialogs.id", ondelete="CASCADE"), index=True
+    )
+    topic_id: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_message_id: Mapped[int] = mapped_column(Integer, default=0)
+    last_synced_at: Mapped[datetime | None] = mapped_column(UtcDateTime, default=None)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    initial_backfill_done: Mapped[bool] = mapped_column(Boolean, default=False)
+    backfill_offset_id: Mapped[int] = mapped_column(Integer, default=0)
+    backfill_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class TelegramMessageRevision(Base):
     """Text a message had *before* it was edited.
 
@@ -113,6 +134,7 @@ class TelegramMessage(Base):
     )
     chat_id: Mapped[int] = mapped_column(BigInteger, index=True)
     message_id: Mapped[int] = mapped_column(Integer)
+    topic_id: Mapped[int | None] = mapped_column(Integer, default=None, index=True)
     sender_id: Mapped[int | None] = mapped_column(BigInteger, default=None)
     sender_name: Mapped[str] = mapped_column(String(160), default="")
     text: Mapped[str] = mapped_column(Text, default="")

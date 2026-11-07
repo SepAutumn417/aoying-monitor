@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import utcnow
 from app.telegram_models import TelegramDialog, TelegramMessage, TelegramMessageRevision
+from app.telegram_topics import TARGET_CHAT_ID, sender_role, topic_id_of, topic_title
 
 # Media kinds we know how to label. Anything else is stored as "file" so the
 # archive still records that an attachment existed.
@@ -68,6 +69,9 @@ def normalize(message: Any) -> dict[str, Any]:
     return {
         "chat_id": int(getattr(message, "chat_id", 0) or 0),
         "message_id": int(getattr(message, "id", 0) or 0),
+        "topic_id": topic_id_of(message)
+        if getattr(message, "chat_id", None) == TARGET_CHAT_ID
+        else None,
         "sender_id": getattr(message, "sender_id", None),
         "sender_name": sender_name_of(message)[:160],
         "text": (getattr(message, "message", "") or "")[:8000],
@@ -81,7 +85,7 @@ def normalize(message: Any) -> dict[str, Any]:
 
 
 async def upsert_message(
-    db: AsyncSession, dialog: TelegramDialog, data: dict[str, Any]
+    db: AsyncSession, dialog: TelegramDialog, data: dict[str, Any], *, commit: bool = True
 ) -> tuple[TelegramMessage, str]:
     """Insert, edit or no-op a message.
 
@@ -101,13 +105,16 @@ async def upsert_message(
     if existing is None:
         row = TelegramMessage(dialog_id=dialog.id, **data)
         db.add(row)
-        await db.commit()
-        await db.refresh(row)
+        if commit:
+            await db.commit()
+            await db.refresh(row)
+        else:
+            await db.flush()
         return row, "created"
 
     changed = False
-    text_changed = bool(data["text"]) and data["text"] != existing.text
-    if text_changed:
+    content_changed = data["text"] != existing.text or data["media_kind"] != existing.media_kind
+    if content_changed:
         # The text being replaced was live until the edit Telegram reports.
         await _archive_revision(db, existing, data["edited_at"] or utcnow())
         existing.text = data["text"]
@@ -115,9 +122,15 @@ async def upsert_message(
     if data["edited_at"] and data["edited_at"] != existing.edited_at:
         existing.edited_at = data["edited_at"]
         changed = True
-    if data["media_kind"] and data["media_kind"] != existing.media_kind:
+    if data["media_kind"] != existing.media_kind:
         existing.media_kind = data["media_kind"]
+        existing.media_path = ""
+        existing.media_size = 0
         changed = True
+    for field in ("topic_id", "sender_id", "reply_to"):
+        if data.get(field) is not None and getattr(existing, field) != data[field]:
+            setattr(existing, field, data[field])
+            changed = True
     if existing.deleted_at is not None:
         # Telegram can deliver a re-fetch after a deletion event was processed
         # out of order; a live message wins.
@@ -125,15 +138,16 @@ async def upsert_message(
         changed = True
 
     if changed:
-        await db.commit()
-        await db.refresh(existing)
+        if commit:
+            await db.commit()
+            await db.refresh(existing)
+        else:
+            await db.flush()
         return existing, "edited"
     return existing, "unchanged"
 
 
-async def _archive_revision(
-    db: AsyncSession, row: TelegramMessage, replaced_at: datetime
-) -> None:
+async def _archive_revision(db: AsyncSession, row: TelegramMessage, replaced_at: datetime) -> None:
     """Store the text a message had before this edit.
 
     `replaced_at` is the edit timestamp Telegram reported; using it (instead of
@@ -216,6 +230,10 @@ def message_payload(row: TelegramMessage, dialog: TelegramDialog) -> dict[str, A
         "chat_id": dialog.chat_id,
         "message_id": row.message_id,
         "sender": row.sender_name,
+        "sender_id": row.sender_id,
+        "sender_role": sender_role(row.chat_id, row.sender_id),
+        "topic_id": row.topic_id,
+        "topic_title": topic_title(row.chat_id, row.topic_id),
         "text": row.text[:400],
         "media_kind": row.media_kind,
         "posted_at": row.posted_at.isoformat(),
