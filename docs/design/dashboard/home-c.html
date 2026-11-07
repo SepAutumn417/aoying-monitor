@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="dsh-design" content="web">
+<title>方向 C · 指挥台 — 首页 · 熬鹰监控</title>
+<style>
+:root{
+  --ink:#0A0E12; --panel:#11171F; --raised:#151D26; --line:#2A3A49;
+  --mist:#9DAEBD; --bright:#C9D4DF; --white:#EDF3F8;
+  --signal:#3DDC97; --amber:#F5B84B; --danger:#FF6B6B;
+  --cn:"Noto Sans SC","Microsoft YaHei UI",sans-serif;
+  --num:"Bahnschrift","DIN Alternate","Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--bright);font:14px/1.6 var(--cn);-webkit-font-smoothing:antialiased}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+.up{color:var(--signal)} .down{color:var(--danger)} .dim{color:var(--mist)}
+.app{display:grid;grid-template-columns:212px 1fr;min-height:100vh}
+.side{border-right:1px solid var(--line);padding:22px 14px;background:#0C1219;
+  display:flex;flex-direction:column;gap:2px}
+.side .logo{font-size:16px;font-weight:600;color:var(--white);padding:0 10px 20px;letter-spacing:.02em}
+.side .logo i{display:block;font-style:normal;font-size:12px;color:var(--mist);font-weight:400;
+  margin-top:5px;letter-spacing:.16em}
+.side a{display:flex;align-items:center;gap:9px;padding:10px;border-radius:9px;
+  color:var(--mist);text-decoration:none;font-size:14px}
+.side a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.side a.on{background:#18222D;color:var(--white)}
+.side .foot{margin-top:auto;font-size:12px;color:var(--mist);padding:0 10px;line-height:2}
+
+main{padding:24px 28px 60px;min-width:0}
+.head{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px}
+.head h1{font-size:21px;color:var(--white);font-weight:600;letter-spacing:.01em}
+.head .sub{font-size:14px;color:var(--mist);padding-bottom:3px}
+.head .st{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mist)}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;
+  border:1px solid var(--line);font-size:12px;white-space:nowrap}
+.pill i{width:5px;height:5px;border-radius:50%;background:var(--signal);display:block;flex:none}
+
+.grid{display:grid;grid-template-columns:1fr 304px;gap:18px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+.hero{background:linear-gradient(135deg,#141C26,#111720 62%);border:1px solid var(--line);
+  border-radius:14px;padding:20px 22px;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
+.hero .k{font-size:12px;letter-spacing:.16em;color:var(--mist);margin-bottom:7px}
+.hero .big{font-size:27px;color:var(--white);font-weight:600;letter-spacing:.01em}
+.hero .big em{font-style:normal;color:var(--amber)}
+.hero .p{font-size:14px;color:var(--mist);margin-top:7px;max-width:38em}
+.hero .figs{display:flex;gap:26px;text-align:right}
+.hero .figs .l{font-size:12px;color:var(--mist);margin-bottom:2px;white-space:nowrap}
+.hero .figs .v{font-size:21px;font-family:var(--num);color:var(--white)}
+
+.bhead{display:flex;align-items:baseline;gap:10px;margin:2px 0 2px}
+.bhead h2{font-size:14px;color:var(--white);font-weight:600}
+.bhead span{font-size:12px;color:var(--mist)}
+.bhead .more{margin-left:auto;font-size:14px;color:var(--mist);text-decoration:none;
+  padding:5px 8px;margin:-5px -8px}
+
+.pos{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.pos+.pos{margin-top:10px}
+.pos .top{display:flex;align-items:center;gap:10px;padding:14px 16px 10px}
+.pos .sym{font-size:16px;color:var(--white);font-weight:600;font-family:var(--num);letter-spacing:.02em}
+.tag{font-size:12px;padding:1px 8px;border-radius:5px;border:1px solid;white-space:nowrap}
+.tag.l{color:var(--signal);border-color:rgba(61,220,151,.32);background:rgba(61,220,151,.08)}
+.tag.s{color:var(--danger);border-color:rgba(255,107,107,.32);background:rgba(255,107,107,.08)}
+.tag.n{color:var(--mist);border-color:var(--line)}
+.pos .pnl{margin-left:auto;font-family:var(--num);font-size:21px;text-align:right}
+.pos .pnl small{display:block;font-family:var(--cn);font-size:12px;color:var(--mist);font-weight:400}
+.pos .sparkwrap{padding:0 4px;margin-top:-4px}
+.spark{display:block;width:100%;height:58px}
+.spark .l{fill:none;stroke:#3A4C5E;stroke-width:1.2;vector-effect:non-scaling-stroke}
+.spark .f{fill:rgba(61,220,151,.07)}
+.spark .base{stroke:#2B3A49;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.spark .d{fill:#5A6B7C;stroke:none}
+.spark .d.open,.spark .d.add{fill:var(--signal)} .spark .d.cut{fill:var(--amber)}
+.spark .d.close{fill:var(--danger)}
+
+.steps{padding:8px 16px 14px;display:flex;flex-direction:column}
+.st{display:grid;grid-template-columns:56px 1fr auto;gap:10px;padding:6px 0;font-size:14px;
+  border-top:1px dashed rgba(42,58,73,.75);align-items:baseline}
+.st:first-child{border-top:none}
+.st .t{font-family:var(--num);font-size:12px;color:var(--mist)}
+.st .w{color:var(--bright)}
+.st .w b{color:var(--white);font-weight:500}
+.st .n{font-family:var(--num);font-size:12px;color:var(--mist);text-align:right}
+
+.rail{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px}
+.card h3{font-size:12px;letter-spacing:.16em;color:var(--mist);font-weight:500;margin-bottom:10px}
+.feed{display:flex;flex-direction:column}
+.fi{display:grid;grid-template-columns:1fr auto;gap:4px 8px;padding:8px 0;border-top:1px solid #1F2C38;font-size:14px}
+.fi:first-child{border-top:none}
+.fi .w{color:var(--bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fi .w b{color:var(--white);font-weight:500}
+.fi .v{font-family:var(--num);font-size:12px}
+.fi .t{grid-column:1/-1;font-family:var(--num);font-size:12px;color:var(--mist)}
+.src{display:flex;align-items:center;gap:8px;font-size:14px;padding:7px 0;border-top:1px solid #1F2C38}
+.src:first-of-type{border-top:none}
+.src i{width:5px;height:5px;border-radius:50%;background:var(--signal);display:block;flex:none}
+.src b{color:var(--bright);font-weight:400}
+.src span{margin-left:auto;font-family:var(--num);font-size:12px;color:var(--mist)}
+</style></head><body>
+<div class="app">
+  <aside class="side">
+    <div class="logo">熬鹰监控<i>AO YING MONITOR</i></div>
+    <a class="on" href="#"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z"/></svg>总览</a><a class="" href="#"><svg viewBox="0 0 24 24"><path d="M4 18V9m6 9V4m6 14v-6"/></svg>持仓</a><a class="" href="#"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 3z"/></svg>发言</a><a class="" href="#"><svg viewBox="0 0 24 24"><path d="M12 4v6m0 4v6M4 12h6m4 0h6"/></svg>数据源</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>设置</a>
+    <div class="foot">只读监控<br>不下单 · 不存密钥<br>v0.3.0</div>
+  </aside>
+
+  <main>
+    <div class="head">
+      <h1>总览</h1>
+      <span class="sub">熬鹰在书友会交易区的仓位变化</span>
+      <div class="st"><span class="pill"><i></i>采集在线</span><span class="pill">快照 11-06 20:50</span></div>
+    </div>
+
+    <div class="grid">
+      <div class="stack">
+        <section class="hero">
+          <div>
+            <div class="k">此刻</div>
+            <div class="big">空仓 · <em>等下一次开仓</em></div>
+            <div class="p">机器人 11-07 10:47 的快照写明「当前无持仓」。上一次动作是 11-06 20:50 平掉 BTCUSDT 多头，已实现 +1,768 USDT。</div>
+          </div>
+          <div class="figs">
+            <div><div class="l">累计已实现</div><div class="v up">+800,776</div></div>
+            <div><div class="l">已完成</div><div class="v">17</div></div>
+          </div>
+        </section>
+
+        <div class="bhead"><h2>已经平掉的仓位</h2><span>每张卡是一个仓位的完整过程</span>
+          <a class="more" href="#">全部 17 个 ›</a></div>
+        <article class="pos">
+  <div class="top">
+    <span class="sym">BTCUSDT</span>
+    <span class="tag l">多</span>
+    <span class="tag n">5.00x</span>
+    <span class="tag n">11-06 20:50 平</span>
+    <span class="pnl up">+1,768<small>已实现 USDT</small></span>
+  </div>
+  <div class="sparkwrap"><svg class="spark" viewBox="0 0 340 54" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" y1="38.6" x2="340" y2="38.6"/><polygon class="f" points="3.0,54 3.0,22.1 337.0,15.4 337.0,54"/><polyline class="l" points="3.0,22.1 337.0,15.4"/><circle class="d open" cx="3.0" cy="22.1" r="2.4"/><circle class="d close" cx="337.0" cy="15.4" r="2.4"/></svg></div>
+  <div class="steps"><div class="st"><span class="t">17:07</span><span class="w"><b>新开仓</b></span><span class="n">9.73 · 价 76,014</span></div><div class="st"><span class="t">20:50</span><span class="w"><b>平仓</b></span><span class="n">9.73 · 价 76,068</span></div></div>
+</article><article class="pos">
+  <div class="top">
+    <span class="sym">ETHUSDT</span>
+    <span class="tag s">空</span>
+    <span class="tag n">20.00x</span>
+    <span class="tag n">11-06 03:15 平</span>
+    <span class="pnl up">+947,072<small>已实现 USDT</small></span>
+  </div>
+  <div class="sparkwrap"><svg class="spark" viewBox="0 0 340 54" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" y1="7.0" x2="340" y2="7.0"/><polygon class="f" points="3.0,54 3.0,7.5 86.5,7.8 170.0,6.6 253.5,9.3 337.0,47.4 337.0,54"/><polyline class="l" points="3.0,7.5 86.5,7.8 170.0,6.6 253.5,9.3 337.0,47.4"/><circle class="d open" cx="3.0" cy="7.5" r="2.4"/><circle class="d add" cx="86.5" cy="7.8" r="2.4"/><circle class="d add" cx="170.0" cy="6.6" r="2.4"/><circle class="d add" cx="253.5" cy="9.3" r="2.4"/><circle class="d close" cx="337.0" cy="47.4" r="2.4"/></svg></div>
+  <div class="steps"><div class="st"><span class="t">03:03</span><span class="w"><b>新开仓</b></span><span class="n">1,461 · 价 2,414</span></div><div class="st"><span class="t">03:05</span><span class="w"><b>加仓（杠杆 10x -> 20x）</b></span><span class="n">1,461 → 2,558 · 价 2,413</span></div><div class="st"><span class="t">03:36</span><span class="w"><b>加仓</b></span><span class="n">2,558 → 4,149 · 价 2,418</span></div><div class="st"><span class="t">03:50</span><span class="w"><b>加仓</b></span><span class="n">4,149 → 5,864 · 价 2,407</span></div><div class="st"><span class="t">03:15</span><span class="w"><b>平仓</b></span><span class="n">5,864 · 价 2,252</span></div></div>
+</article><article class="pos">
+  <div class="top">
+    <span class="sym">MUUSDT</span>
+    <span class="tag l">多</span>
+    <span class="tag n">5.00x</span>
+    <span class="tag n">11-05 03:04 平</span>
+    <span class="pnl down">-287,525<small>已实现 USDT</small></span>
+  </div>
+  <div class="sparkwrap"><svg class="spark" viewBox="0 0 340 54" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" y1="14.1" x2="340" y2="14.1"/><polygon class="f" points="3.0,54 3.0,13.5 114.3,11.7 225.7,6.6 337.0,47.4 337.0,54"/><polyline class="l" points="3.0,13.5 114.3,11.7 225.7,6.6 337.0,47.4"/><circle class="d open" cx="3.0" cy="13.5" r="2.4"/><circle class="d lev" cx="114.3" cy="11.7" r="2.4"/><circle class="d add" cx="225.7" cy="6.6" r="2.4"/><circle class="d close" cx="337.0" cy="47.4" r="2.4"/></svg></div>
+  <div class="steps"><div class="st"><span class="t">13:53</span><span class="w"><b>新开仓</b></span><span class="n">3,525 · 价 851.44</span></div><div class="st"><span class="t">13:54</span><span class="w"><b>持仓更新（杠杆 4x -> 5x）</b></span><span class="n">3,525 → 3,525 · 价 853.96</span></div><div class="st"><span class="t">14:29</span><span class="w"><b>加仓</b></span><span class="n">3,525 → 5,892 · 价 860.86</span></div><div class="st"><span class="t">03:04</span><span class="w"><b>平仓</b></span><span class="n">5,892 · 价 805.25</span></div></div>
+</article>
+      </div>
+
+      <aside class="rail">
+        <div class="card">
+          <h3>最近动作</h3>
+          <div class="feed"><div class="fi"><span class="w"><b>BTCUSDT</b> 平仓</span>
+<span class="v up">+1,768</span>
+<span class="t">11-06 20:50</span></div><div class="fi"><span class="w"><b>BTCUSDT</b> 新开仓</span>
+<span class="v up">+1,291</span>
+<span class="t">11-06 17:07</span></div><div class="fi"><span class="w"><b>ETHUSDT</b> 平仓</span>
+<span class="v up">+947,072</span>
+<span class="t">11-06 03:15</span></div><div class="fi"><span class="w"><b>ETHUSDT</b> 加仓</span>
+<span class="v up">+52,970</span>
+<span class="t">11-05 03:50</span></div><div class="fi"><span class="w"><b>ETHUSDT</b> 加仓</span>
+<span class="v down">-3,182</span>
+<span class="t">11-05 03:36</span></div><div class="fi"><span class="w"><b>ETHUSDT</b> 加仓（杠杆 10x -> 20x）</span>
+<span class="v up">+6,888</span>
+<span class="t">11-05 03:05</span></div><div class="fi"><span class="w"><b>MUUSDT</b> 平仓</span>
+<span class="v down">-287,525</span>
+<span class="t">11-05 03:04</span></div><div class="fi"><span class="w"><b>ETHUSDT</b> 新开仓</span>
+<span class="v up">+3,323</span>
+<span class="t">11-05 03:03</span></div><div class="fi"><span class="w"><b>MUUSDT</b> 加仓</span>
+<span class="v up">+40,506</span>
+<span class="t">11-04 14:29</span></div><div class="fi"><span class="w"><b>MUUSDT</b> 持仓更新（杠杆 4x -> 5x）</span>
+<span class="v up">+11,411</span>
+<span class="t">11-04 13:54</span></div></div>
+        </div>
+        <div class="card">
+          <h3>数据源</h3>
+          <div class="src"><i></i><b>书友会 · 交易区</b><span>96 条</span></div>
+          <div class="src"><i></i><b>书友会 · 通知区</b><span>200 条</span></div>
+          <div class="src"><i></i><b>书友会 · 禁言区</b><span>200 条</span></div>
+          <div class="src"><i></i><b>书友会 · 闲聊</b><span>261 条</span></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</body></html>

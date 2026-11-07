@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="dsh-design" content="web">
+<title>方向 A · 交易终端 — 首页 · 熬鹰监控</title>
+<style>
+:root{
+  --bg:#05080B; --line:#1B242E; --line2:#121A22;
+  --tx:#CBD5E0; --dim:#8FA2B4; --dim2:#7E90A2;
+  --up:#2FD98A; --down:#FF5A5A; --amber:#E8A73C; --white:#F2F7FA;
+  --mono:"JetBrains Mono","Cascadia Mono","Consolas",ui-monospace,monospace;
+  --cn:"Noto Sans SC","Microsoft YaHei UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font:14px/1.5 var(--cn);
+  -webkit-font-smoothing:antialiased}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)} .dim{color:var(--dim)}
+.shell{display:flex;flex-direction:column;height:100vh;min-height:760px}
+
+.tbar{display:flex;align-items:center;gap:20px;padding:0 20px;height:52px;
+  border-bottom:1px solid var(--line);background:#070B0F}
+.brand{font-family:var(--mono);font-size:14px;letter-spacing:.14em;color:var(--white);white-space:nowrap}
+.brand i{color:var(--dim);font-style:normal}
+.tbar .mid{display:flex;gap:16px;font-size:12px;color:var(--dim);letter-spacing:.04em;white-space:nowrap}
+.tbar .mid b{color:var(--up);font-weight:500}
+.tbar .right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:12px;
+  color:var(--dim);white-space:nowrap}
+.clock{font-family:var(--mono);color:var(--white);letter-spacing:.08em}
+
+.flatbar{display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:1px solid var(--line2);
+  font-size:13px;background:linear-gradient(90deg,rgba(232,167,60,.07),transparent 55%)}
+.flatbar .flag{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--amber);
+  border:1px solid rgba(232,167,60,.36);padding:2px 8px;white-space:nowrap}
+.flatbar .txt{color:var(--dim)}
+.flatbar .txt b{color:var(--tx);font-weight:500}
+.flatbar .last{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
+.flatbar .last b{color:var(--white)}
+
+.body{display:grid;grid-template-columns:1fr 300px;flex:1;min-height:0}
+.main{overflow:auto;border-right:1px solid var(--line)}
+.rail{overflow:auto;background:#070B0F}
+
+.sect{border-bottom:1px solid var(--line)}
+.sect-h{display:flex;align-items:baseline;gap:10px;padding:11px 20px 9px;
+  font-size:12px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.sect-h b{font-family:var(--mono);font-size:14px;color:var(--white);letter-spacing:0}
+.sect-h span{margin-left:auto;font-family:var(--mono);font-size:12px;letter-spacing:0}
+
+.hdr-row,.row{display:grid;align-items:center;gap:0;
+  grid-template-columns:110px 104px 52px 1fr 1fr 1fr 108px 86px}
+.hdr-row{font-size:12px;letter-spacing:.06em;color:var(--dim);padding:0 20px 6px}
+.row{padding:9px 20px;border-top:1px solid var(--line2);font-family:var(--mono);font-size:13px;
+  cursor:default;transition:background .12s}
+.row:hover{background:#0A1017}
+.row .sym{color:var(--white);font-size:13px;letter-spacing:.02em;white-space:nowrap}
+.chip{display:inline-block;font-size:12px;padding:0 5px;line-height:17px;border:1px solid;
+  font-family:var(--cn);white-space:nowrap}
+.chip.l{color:var(--up);border-color:rgba(47,217,138,.34);background:rgba(47,217,138,.08)}
+.chip.s{color:var(--down);border-color:rgba(255,90,90,.34);background:rgba(255,90,90,.08)}
+.cell-r{text-align:right}
+.sp{font-size:13px;color:var(--dim);text-align:right;white-space:nowrap;overflow:hidden}
+.sp b{color:var(--up);font-weight:400}
+.sp i{color:var(--down);font-style:normal}
+
+.flat-empty{padding:34px 20px;text-align:center;border-top:1px solid var(--line2)}
+.flat-empty .big{font-family:var(--mono);font-size:44px;letter-spacing:.22em;color:#54687A;line-height:1}
+.flat-empty .p{color:var(--dim);font-size:13px;margin-top:12px}
+.flat-empty .p b{color:var(--amber);font-family:var(--mono)}
+
+.feed{padding:4px 0}
+.fi{display:grid;grid-template-columns:52px 32px 1fr auto;gap:10px;align-items:center;
+  padding:7px 20px;font-size:13px;border-bottom:1px solid #0A1017}
+.fi .t{font-family:var(--mono);font-size:12px;color:var(--dim2);white-space:nowrap}
+.fi .k{font-family:var(--mono);font-size:12px;text-align:center;color:var(--dim);white-space:nowrap}
+.fi .k.open,.fi .k.add{color:var(--up)} .fi .k.cut{color:var(--amber)} .fi .k.close{color:var(--down)}
+.fi .w{color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fi .w b{color:var(--white);font-weight:500}
+.fi .v{font-family:var(--mono);font-size:12px;text-align:right;white-space:nowrap}
+
+.rhead{padding:11px 16px 9px;font-size:12px;letter-spacing:.16em;color:var(--dim);
+  border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:baseline}
+.rhead b{margin-left:auto;font-family:var(--mono);color:var(--white);font-weight:400;letter-spacing:0}
+.src{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:13px;border-bottom:1px solid #0A1017}
+.src .dot{width:5px;height:5px;background:var(--up);border-radius:50%;flex:none}
+.src b{color:var(--tx);font-weight:500}
+.src span{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--dim)}
+.legend{padding:12px 16px;font-size:12px;color:var(--dim);line-height:2;border-top:1px solid var(--line)}
+.legend i{font-style:normal;color:var(--tx)}
+.legend .lg{display:block;color:var(--dim);margin-bottom:4px;letter-spacing:.12em}
+[hidden]{display:none!important}
+
+.spark{width:100%;height:26px;display:block}
+.b{display:inline-block;width:3px;height:9px;margin-right:2px;background:#2A3947;vertical-align:-1px}
+.b.open,.b.add{background:var(--up)} .b.cut{background:var(--amber)}
+.b.close{background:var(--down)}
+</style></head><body>
+<div class="shell">
+  <header class="tbar">
+    <div class="brand">AOYING <i>/</i> 交易监控</div>
+    <div class="mid">
+      <span>书友会 <b>4 分区</b></span><span>采集 <b>在线</b></span>
+      <span>快照 11-07 10:47</span>
+    </div>
+    <div class="right"><span class="clock">11-07 19:44 CST</span><span>只读 · 不接交易</span></div>
+  </header>
+
+  <div class="flatbar">
+    <span class="flag">FLAT</span>
+    <span class="txt">当前无持仓 · 机器人 11-07 10:47 快照写明<b>当前无持仓</b></span>
+    <span class="last">最近动作 <b>11-06 20:50 BTCUSDT 平仓 +1,768</b></span>
+  </div>
+
+  <div class="body">
+    <div class="main">
+      <section class="sect">
+        <div class="sect-h">持仓 <b>0</b><span>回放 10-23 22:56 时曾有 2 仓</span></div>
+        <div class="flat-empty">
+          <div class="big">FLAT</div>
+          <div class="p">下一次开仓信号会在这里出现，并以 <b>1 秒内</b> 推到手机</div>
+        </div>
+      </section>
+
+      <section class="sect">
+        <div class="sect-h">已完成 <b>17</b><span>累计已实现 <b class="up">+800,776</b> USDT</span></div>
+        <div class="hdr-row">
+          <span>平仓</span><span>标的</span><span>方向</span><span>数量</span>
+          <span>开仓均价</span><span>杠杆</span><span class="cell-r">已实现</span><span>轨迹</span>
+        </div>
+        <div class="row">
+<span class="dim">11-06 20:50</span>
+<span class="sym">BTCUSDT</span>
+<span><span class="chip l">多</span></span>
+<span class="num">9.73</span>
+<span class="num dim">75,882</span>
+<span class="num dim">5.00x</span>
+<span class="num cell-r up">+1,768</span>
+<span class="sp"><b>▁█</b></span>
+</div><div class="row">
+<span class="dim">11-06 03:15</span>
+<span class="sym">ETHUSDT</span>
+<span><span class="chip s">空</span></span>
+<span class="num">5,864</span>
+<span class="num dim">2,417</span>
+<span class="num dim">20.00x</span>
+<span class="num cell-r up">+947,072</span>
+<span class="sp"><b>████▁</b></span>
+</div><div class="row">
+<span class="dim">11-05 03:04</span>
+<span class="sym">MUUSDT</span>
+<span><span class="chip l">多</span></span>
+<span class="num">5,892</span>
+<span class="num dim">850.72</span>
+<span class="num dim">5.00x</span>
+<span class="num cell-r down">-287,525</span>
+<span class="sp"><i>▇▇█▁</i></span>
+</div><div class="row">
+<span class="dim">11-04 13:52</span>
+<span class="sym">ETHUSDT</span>
+<span><span class="chip s">空</span></span>
+<span class="num">1,664</span>
+<span class="num dim">2,229</span>
+<span class="num dim">10.00x</span>
+<span class="num cell-r down">-296,686</span>
+<span class="sp"><i>▁▁▁▁▁▄████</i></span>
+</div><div class="row">
+<span class="dim">10-30 15:45</span>
+<span class="sym">SNDKUSDT</span>
+<span><span class="chip l">多</span></span>
+<span class="num">503.37</span>
+<span class="num dim">1,288</span>
+<span class="num dim">2.00x</span>
+<span class="num cell-r up">+3,197</span>
+<span class="sp"><b>▁█</b></span>
+</div><div class="row">
+<span class="dim">10-30 10:19</span>
+<span class="sym">ETHUSDT</span>
+<span><span class="chip s">空</span></span>
+<span class="num">4,192</span>
+<span class="num dim">2,254</span>
+<span class="num dim">20.00x</span>
+<span class="num cell-r up">+256,669</span>
+<span class="sp"><b>▅██▁</b></span>
+</div><div class="row">
+<span class="dim">10-30 04:50</span>
+<span class="sym">HYPEUSDT</span>
+<span><span class="chip s">空</span></span>
+<span class="num">29,262</span>
+<span class="num dim">94.40</span>
+<span class="num dim">5.00x</span>
+<span class="num cell-r up">+49,094</span>
+<span class="sp"><b>██▆▆▁</b></span>
+</div><div class="row">
+<span class="dim">10-30 02:39</span>
+<span class="sym">ETHUSDT</span>
+<span><span class="chip l">多</span></span>
+<span class="num">842.94</span>
+<span class="num dim">2,344</span>
+<span class="num dim">10.00x</span>
+<span class="num cell-r down">-91,444</span>
+<span class="sp"><i>▅▅▅█▁▁▁▁</i></span>
+</div>
+      </section>
+
+      <section class="sect">
+        <div class="sect-h">全部动作 <b>96</b><span>按时间倒序</span></div>
+        <div class="feed"><div class="fi"><span class="t">20:50</span>
+<span class="k close">平</span>
+<span class="w"><b>BTCUSDT</b> 平仓</span>
+<span class="v up">+1,768</span></div><div class="fi"><span class="t">17:07</span>
+<span class="k open">开</span>
+<span class="w"><b>BTCUSDT</b> 新开仓</span>
+<span class="v up">+1,291</span></div><div class="fi"><span class="t">03:15</span>
+<span class="k close">平</span>
+<span class="w"><b>ETHUSDT</b> 平仓</span>
+<span class="v up">+947,072</span></div><div class="fi"><span class="t">03:50</span>
+<span class="k add">加</span>
+<span class="w"><b>ETHUSDT</b> 加仓</span>
+<span class="v up">+52,970</span></div><div class="fi"><span class="t">03:36</span>
+<span class="k add">加</span>
+<span class="w"><b>ETHUSDT</b> 加仓</span>
+<span class="v down">-3,182</span></div><div class="fi"><span class="t">03:05</span>
+<span class="k add">加</span>
+<span class="w"><b>ETHUSDT</b> 加仓（杠杆 10x -> 20x）</span>
+<span class="v up">+6,888</span></div><div class="fi"><span class="t">03:04</span>
+<span class="k close">平</span>
+<span class="w"><b>MUUSDT</b> 平仓</span>
+<span class="v down">-287,525</span></div><div class="fi"><span class="t">03:03</span>
+<span class="k open">开</span>
+<span class="w"><b>ETHUSDT</b> 新开仓</span>
+<span class="v up">+3,323</span></div><div class="fi"><span class="t">14:29</span>
+<span class="k add">加</span>
+<span class="w"><b>MUUSDT</b> 加仓</span>
+<span class="v up">+40,506</span></div><div class="fi"><span class="t">13:54</span>
+<span class="k lev">杠杆</span>
+<span class="w"><b>MUUSDT</b> 持仓更新（杠杆 4x -> 5x）</span>
+<span class="v up">+11,411</span></div><div class="fi"><span class="t">13:53</span>
+<span class="k open">开</span>
+<span class="w"><b>MUUSDT</b> 新开仓</span>
+<span class="v up">+2,530</span></div><div class="fi"><span class="t">13:52</span>
+<span class="k close">平</span>
+<span class="w"><b>ETHUSDT</b> 平仓</span>
+<span class="v down">-296,686</span></div><div class="fi"><span class="t">13:49</span>
+<span class="k cut">减</span>
+<span class="w"><b>ETHUSDT</b> 减仓</span>
+<span class="v down">-95,226</span></div><div class="fi"><span class="t">13:45</span>
+<span class="k cut">减</span>
+<span class="w"><b>ETHUSDT</b> 减仓</span>
+<span class="v down">-165,164</span></div><div class="fi"><span class="t">13:39</span>
+<span class="k cut">减</span>
+<span class="w"><b>ETHUSDT</b> 减仓</span>
+<span class="v down">-210,973</span></div><div class="fi"><span class="t">23:20</span>
+<span class="k add">加</span>
+<span class="w"><b>ETHUSDT</b> 加仓</span>
+<span class="v down">-75,090</span></div><div class="fi"><span class="t">21:13</span>
+<span class="k lev">杠杆</span>
+<span class="w"><b>ETHUSDT</b> 持仓更新（杠杆 5x -> 10x）</span>
+<span class="v down">-4,435</span></div><div class="fi"><span class="t">21:11</span>
+<span class="k add">加</span>
+<span class="w"><b>ETHUSDT</b> 加仓</span>
+<span class="v down">-733</span></div><div class="fi"><span class="t">18:19</span>
+<span class="k lev">杠杆</span>
+<span class="w"><b>ETHUSDT</b> 持仓更新（杠杆 10x -> 5x）</span>
+<span class="v up">+15,000</span></div><div class="fi"><span class="t">16:40</span>
+<span class="k add">加</span>
+<span class="w"><b>ETHUSDT</b> 加仓</span>
+<span class="v up">+5,449</span></div><div class="fi"><span class="t">16:27</span>
+<span class="k open">开</span>
+<span class="w"><b>ETHUSDT</b> 新开仓</span>
+<span class="v up">+653</span></div><div class="fi"><span class="t">15:45</span>
+<span class="k close">平</span>
+<span class="w"><b>SNDKUSDT</b> 平仓</span>
+<span class="v up">+3,197</span></div></div>
+      </section>
+    </div>
+
+    <aside class="rail">
+      <div class="rhead">持仓回放<span><b>2</b></span></div>
+      <div class="hdr-row" style="padding:8px 16px 4px;grid-template-columns:1fr 60px 78px;font-size:12px">
+        <span>标的</span><span class="cell-r">杠杆</span><span class="cell-r">浮动</span>
+      </div>
+      <div class="row" style="padding:8px 16px;grid-template-columns:1fr 60px 78px;font-size:13px"><span class="sym">SNDKUSDT <span class="chip l">多</span></span><span class="num cell-r dim">15x</span><span class="num cell-r down">-134,071</span></div><div class="row" style="padding:8px 16px;grid-template-columns:1fr 60px 78px;font-size:13px"><span class="sym">ETHUSDT <span class="chip s">空</span></span><span class="num cell-r dim">15x</span><span class="num cell-r down">-639</span></div>
+      <div class="legend">
+        <i class="lg">配色</i>
+        <span class="up">■</span> 盈利 / 开仓 / 加仓<br>
+        <span class="down">■</span> 亏损 / 平仓<br>
+        <span style="color:var(--amber)">■</span> 减仓 &nbsp;
+        <span style="color:#8FA2B4">■</span> 调杠杆
+      </div>
+      <div class="rhead" style="margin-top:6px">数据源<span><b>4</b></span></div>
+      <div class="src"><span class="dot"></span><b>书友会 交易区</b><span>96 条</span></div>
+      <div class="src"><span class="dot"></span><b>书友会 通知区</b><span>200 条</span></div>
+      <div class="src"><span class="dot"></span><b>书友会 禁言区</b><span>200 条</span></div>
+      <div class="src"><span class="dot"></span><b>书友会 闲聊</b><span>261 条</span></div>
+    </aside>
+  </div>
+</div>
+</body></html>

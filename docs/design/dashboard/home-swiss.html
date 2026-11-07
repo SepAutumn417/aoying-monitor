@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="dsh-design" content="web">
+<title>浅色 · 清算所 — 首页 · 熬鹰监控</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+.num,.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.up{color:var(--up)}
+.down{color:var(--down)}
+.dim{color:var(--muted)}
+
+.life-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.life-h .sym{font-family:var(--num-font);letter-spacing:.01em}
+.life-h .spine{font-size:12px;color:var(--muted);font-family:var(--num-font)}
+.life-h .spine b{font-weight:400;color:var(--ink)}
+.life-h .res{margin-left:auto;text-align:right;white-space:nowrap}
+.life-h .res .v{font-family:var(--num-font);font-size:20px;line-height:1.2}
+.life-h .res .l{font-size:12px;color:var(--muted)}
+
+.badge{font-size:12px;padding:0 6px;line-height:18px;border:1px solid;white-space:nowrap}
+.badge.l{color:var(--up);border-color:var(--up-line)}
+.badge.s{color:var(--down);border-color:var(--down-line)}
+.badge.n{color:var(--muted);border-color:var(--rule)}
+
+.life-svg{display:block;width:100%}
+.life-svg .l{fill:none;stroke:var(--line-ink);stroke-width:1.3;vector-effect:non-scaling-stroke}
+.life-svg .f{fill:var(--area)}
+.life-svg .base{stroke:var(--rule);stroke-width:1;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
+.life-svg .d{stroke:var(--card);stroke-width:1.5}
+.life-svg .d.open,.life-svg .d.add{fill:var(--up)}
+.life-svg .d.cut{fill:var(--amber)}
+.life-svg .d.close{fill:var(--down)}
+.life-svg .d.lev{fill:var(--muted)}
+.life-svg .ax{font-family:var(--num-font);font-size:11.5px;fill:var(--ink)}
+.life-svg .ax.r,.life-svg .tk.r{text-anchor:end}
+.life-svg .tk{font-family:var(--num-font);font-size:11.5px;fill:var(--muted)}
+
+.facts{display:flex;flex-wrap:wrap}
+.facts .l{font-size:12px;color:var(--muted)}
+.facts .v{font-family:var(--num-font);font-size:13px;color:var(--ink)}
+
+.step{display:grid;grid-template-columns:62px 1fr 190px;gap:14px;align-items:start}
+.step .t{font-family:var(--num-font);font-size:12px;color:var(--muted);padding-top:2px}
+.step .a{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;min-width:0}
+.step .a .nm{font-size:13px;color:var(--ink);font-weight:600}
+.step .a .q{font-family:var(--num-font);font-size:13px;color:var(--ink)}
+.step .a .q em{font-style:normal;color:var(--muted);padding:0 3px}
+.step .a .sub{font-size:12px;color:var(--muted);width:100%}
+.step .a .sub i{font-style:normal;font-family:var(--num-font);color:var(--ink-2)}
+.step .n{text-align:right;font-family:var(--num-font);font-size:13px}
+.step .n small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:400}
+
+.more{display:block;width:100%;text-align:left;font:inherit;font-size:12px;color:var(--muted);
+  background:transparent;border:0;cursor:pointer}
+
+.item{display:grid;grid-template-columns:1fr auto;gap:3px 10px}
+.item .top{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-width:0}
+.src-tag{font-size:12px;padding:0 6px;line-height:18px;border:1px solid var(--rule);
+  color:var(--muted);white-space:nowrap;flex:none}
+.src-tag.trade{color:var(--up);border-color:var(--up-line)}
+.src-tag.owner{color:var(--accent);border-color:var(--accent-line)}
+.item .who{font-size:12px;color:var(--ink-2);min-width:0;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .who b{font-weight:600;color:var(--ink)}
+.item .tm{font-family:var(--num-font);font-size:12px;color:var(--muted);white-space:nowrap;flex:none}
+.item .txt{grid-column:1/-1;font-size:13px;color:var(--ink);line-height:1.62;overflow-wrap:anywhere}
+.item .meta{grid-column:1/-1;display:flex;gap:8px;font-size:12px;color:var(--muted);margin-top:1px}
+.fold{font-size:12px;color:var(--muted)}
+
+.mband{padding-top:12px}
+.mh{font-size:12px;color:var(--muted);margin-bottom:8px}
+.mh span{margin-left:8px}
+.mrow{display:flex;flex-wrap:wrap;gap:6px}
+.mcell{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;
+  border:1px solid var(--rule);font-size:12px;color:var(--muted)}
+.mk{width:6px;height:6px;border-radius:1px;background:var(--muted)}
+.mk.photo{background:var(--accent)}
+.mk.document{background:var(--ink-2)}
+.mcell .ms{font-family:var(--num-font);font-size:12px}
+
+:root{
+  --paper:#FFFFFF; --card:#FFFFFF; --ink:#111111; --ink-2:#333333; --muted:#6B6B6B;
+  --rule:#D6D6D6; --line-ink:#111111; --area:rgba(17,17,17,.04);
+  --up:#0B7345; --down:#B32317; --amber:#8A6A00; --accent:#111111;
+  --up-line:#0B7345; --down-line:#B32317; --accent-line:#111111;
+  --num-font:"Helvetica Neue","Noto Sans SC","Microsoft YaHei UI",sans-serif;
+  --sans:"Helvetica Neue","Noto Sans SC","Microsoft YaHei UI",sans-serif;
+}
+body{background:var(--paper);color:var(--ink);font:14px/1.5 var(--sans);
+  -webkit-font-smoothing:antialiased}
+.shell{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+.idx{border-right:2px solid var(--ink);padding:26px 18px 40px;background:var(--paper)}
+.idx .top{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink)}
+.idx .sub{font-size:12px;color:var(--muted);margin-top:6px;padding-bottom:12px;
+  border-bottom:2px solid var(--ink)}
+.idx h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;margin:18px 0 6px;
+  color:var(--muted)}
+.idx ul{list-style:none}
+.idx li{display:flex;align-items:baseline;gap:6px;padding:6px 0;
+  border-bottom:1px solid var(--rule);font-size:12px}
+.idx li.cur{background:#111;color:#fff;margin:0 -18px;padding:6px 18px}
+.idx li .s{font-family:var(--num-font);font-size:13px;font-weight:600;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idx li .p{font-family:var(--num-font);font-size:12px;white-space:nowrap}
+.idx li.cur .p{color:#fff}
+.idx .foot{margin-top:16px;font-size:12px;color:var(--muted);line-height:1.7}
+
+.page{padding:0 34px 64px;min-width:0}
+.hdr{display:flex;align-items:baseline;gap:18px;padding:22px 0 10px;
+  border-bottom:4px solid var(--ink)}
+.hdr .t{font-size:15px;letter-spacing:.24em;text-transform:uppercase;font-weight:700}
+.hdr .n{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.hdr .r{margin-left:auto;font-family:var(--num-font);font-size:12px;color:var(--muted)}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid var(--ink)}
+.strip div{padding:11px 0 12px;border-right:1px solid var(--rule)}
+.strip div:last-child{border-right:none}
+.strip .k{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.strip .v{font-family:var(--num-font);font-size:24px;line-height:1.3;margin-top:3px}
+.strip div+div .v,.strip div+div .k{padding-left:16px}
+
+.sec-h{display:flex;align-items:baseline;gap:12px;margin:26px 0 0;
+  padding-bottom:6px;border-bottom:1px solid var(--ink)}
+.sec-h h2{font-size:13px;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
+.sec-h span{font-size:12px;color:var(--muted)}
+.sec-h .r{margin-left:auto;font-family:var(--num-font);font-size:12px;color:var(--muted)}
+
+.life{padding:18px 0 4px;border-bottom:1px solid var(--ink)}
+.life-h .sym{font-size:20px;font-weight:700;letter-spacing:.02em}
+.life-svg{height:126px;margin:10px 0 2px}
+.facts{gap:0;margin-bottom:10px}
+.facts div{padding-right:26px;margin-right:26px;border-right:1px solid var(--rule)}
+.facts div:last-child{border-right:none;margin-right:0;padding-right:0}
+.step{padding:8px 0;border-top:1px solid var(--rule)}
+.step:nth-child(2){border-top:none}
+.more{padding:9px 0;border-top:2px solid var(--ink);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink)}
+
+.feed{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 26px;margin-top:4px}
+.feed .col{min-width:0}
+.item{padding:12px 0;border-bottom:1px solid var(--rule)}
+.item.own .who b::after{content:" ★";color:var(--accent)}
+.fold{grid-column:1/-1;padding:10px 0 4px;border-bottom:2px solid var(--ink);
+  font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.mband{margin-top:22px;padding-top:12px;border-top:2px solid var(--ink)}
+</style></head><body>
+<div class="shell">
+  <aside class="idx">
+    <div class="top">AOYING</div>
+    <div class="sub">交易监控 · 只读</div>
+    <h2>已完成仓位</h2>
+    <ul><li class=""><span class="s">BTCUSDT</span><span class="p p-up">+1,768</span></li><li class=""><span class="s">ETHUSDT</span><span class="p p-up">+947,072</span></li><li class=""><span class="s">MUUSDT</span><span class="p p-down">-287,525</span></li><li class=""><span class="s">ETHUSDT</span><span class="p p-down">-296,686</span></li><li class=""><span class="s">SNDKUSDT</span><span class="p p-up">+3,197</span></li><li class=""><span class="s">ETHUSDT</span><span class="p p-up">+256,669</span></li><li class=""><span class="s">HYPEUSDT</span><span class="p p-up">+49,094</span></li><li class=""><span class="s">ETHUSDT</span><span class="p p-down">-91,444</span></li><li class=""><span class="s">SNDKUSDT</span><span class="p p-up">+190,101</span></li><li class=""><span class="s">ETHUSDT</span><span class="p p-up">+35,365</span></li><li class=""><span class="s">BTCUSDT</span><span class="p p-up">+60,506</span></li><li class=""><span class="s">ZECUSDT</span><span class="p p-up">+195,694</span></li><li class=""><span class="s">CRCLUSDT</span><span class="p p-up">+9,489</span></li><li class="cur"><span class="s">ZECUSDT</span><span class="p ">-214,697</span></li><li class=""><span class="s">BTCUSDT</span><span class="p p-down">-98,592</span></li><li class=""><span class="s">CLUSDT</span><span class="p p-up">+14,827</span></li><li class=""><span class="s">BTCUSDT</span><span class="p p-up">+25,938</span></li></ul>
+    <div class="foot">四个分区在线<br>最近同步 11-07 19:58<br>累计已实现<br>
+      <span class="mono" style="font-size:13px">+800,776 USDT</span></div>
+  </aside>
+
+  <main class="page">
+    <div class="hdr">
+      <span class="t">仓位生命周期</span>
+      <span class="n">一个仓位从开到平，每一步都留在原地</span>
+      <span class="r">11-07 20:0x CST</span>
+    </div>
+    <div class="strip">
+      <div><div class="k">当前持仓</div><div class="v">0</div></div>
+      <div><div class="k">已完成</div><div class="v">17</div></div>
+      <div><div class="k">累计已实现</div><div class="v up">+800,776</div></div>
+      <div><div class="k">最近动作</div><div class="v" style="font-size:15px">
+        BTCUSDT 平仓 +1,768</div></div>
+    </div>
+    <article class="life">
+  <div class="life-h">
+    <span class="sym">ZECUSDT</span>
+    <span class="badge l">多</span>
+    <span class="badge n">5.00x</span>
+    <span class="spine">10-02 12:28 开仓 <b>→</b> 10-05 23:09 平仓 <b>·</b> 持有 3 天 10 时</span>
+    <span class="res"><span class="v down">-214,697</span>
+      <span class="l">已实现 USDT</span></span>
+  </div>
+  <svg class="life-svg" viewBox="0 0 720 132" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" y1="44.6" x2="720" y2="44.6"/><polygon class="f" points="6.0,110 6.0,38.0 6.2,30.0 6.8,40.0 6.9,36.2 7.4,35.6 7.5,35.1 7.9,32.4 8.0,26.3 294.9,107.8 713.7,94.2 713.8,94.8 714.0,94.8 714.0,110"/><polyline class="l" points="6.0,38.0 6.2,30.0 6.8,40.0 6.9,36.2 7.4,35.6 7.5,35.1 7.9,32.4 8.0,26.3 294.9,107.8 713.7,94.2 713.8,94.8 714.0,94.8"/><circle class="d open" cx="6.0" cy="38.0" r="3"/><circle class="d add" cx="6.2" cy="30.0" r="3"/><circle class="d lev" cx="6.8" cy="40.0" r="3"/><circle class="d add" cx="6.9" cy="36.2" r="3"/><circle class="d add" cx="7.4" cy="35.6" r="3"/><circle class="d add" cx="7.5" cy="35.1" r="3"/><circle class="d add" cx="7.9" cy="32.4" r="3"/><circle class="d add" cx="8.0" cy="26.3" r="3"/><circle class="d cut" cx="294.9" cy="107.8" r="3"/><circle class="d cut" cx="713.7" cy="94.2" r="3"/><circle class="d cut" cx="713.8" cy="94.8" r="3"/><circle class="d close" cx="714.0" cy="94.8" r="3"/><text class="ax" x="12" y="25.0">1,376</text><text class="ax r" x="708" y="81.8">1,308</text><text class="tk" x="12" y="126">10-02 12:28</text><text class="tk r" x="708" y="126">10-05 23:09</text></svg>
+  <div class="facts">
+    <div><div class="l">开仓均价</div><div class="v">1,368</div></div>
+    <div><div class="l">最大数量</div><div class="v">3,059.8</div></div>
+    <div><div class="l">最大保证金</div><div class="v">850,442</div></div>
+    <div><div class="l">最差浮动</div><div class="v down">-188,813</div></div>
+    <div><div class="l">最好浮动</div><div class="v up">+41,992</div></div>
+  </div>
+  <div class="steps"><div class="step"><span class="t">12:28</span><span class="a"><span class="nm">新开仓</span><span class="q">902.2 张</span><span class="sub">标记价 <i>1,376</i> · 保证金 <i>413,766</i> · 实际杠杆 <i>1.49x</i> · 强平 <i>460.14</i> · 浮动 <i>+7,075</i></span></span><span class="n"><span class="up">+7,075</span><small>浮动</small></span></div><div class="step"><span class="t">12:29</span><span class="a"><span class="nm">加仓</span><span class="q">902.2<em>→</em>1,794.3 张</span><span class="sub">标记价 <i>1,385</i> · 保证金 <i>828,567</i> · 实际杠杆 <i>2.93x</i> · 强平 <i>931.79</i> · 浮动 <i>+23,497</i></span></span><span class="n"><span class="up">+23,497</span><small>浮动</small></span></div><div class="step"><span class="t">12:33</span><span class="a"><span class="nm">调杠杆</span><span class="q">3x<em>→</em>5x</span><span class="sub">标记价 <i>1,373</i> · 保证金 <i>492,857</i> · 实际杠杆 <i>2.98x</i> · 强平 <i>931.79</i> · 浮动 <i>+2,080</i></span></span><span class="n"><span class="up">+2,080</span><small>浮动</small></span></div><div class="step"><span class="t">12:34</span><span class="a"><span class="nm">加仓 5 次</span><span class="q">1,794.3<em>→</em>3,059.8 张</span><span class="sub">标记价 <i>1,390</i> · 保证金 <i>850,442</i> · 实际杠杆 <i>4.9x</i> · 强平 <i>1,145</i> · 浮动 <i>+41,992</i></span></span><span class="n"><span class="up">+41,992</span><small>浮动</small></span></div><div class="step"><span class="t">22:12</span><span class="a"><span class="nm">减仓</span><span class="q">3,059.8<em>→</em>2,264.2 张</span><span class="sub">标记价 <i>1,293</i> · 保证金 <i>585,350</i> · 实际杠杆 <i>5.12x</i> · 强平 <i>1,069</i> · 浮动 <i>-188,813</i></span></span><span class="n"><span class="down">-62,852</span><small>本段落袋</small></span></div><div class="step"><span class="t">23:06</span><span class="a"><span class="nm">减仓 2 次</span><span class="q">2,264.2<em>→</em>595.0 张</span><span class="sub">标记价 <i>1,308</i> · 保证金 <i>155,662</i> · 实际杠杆 <i>1.28x</i> · 强平 <i>292.14</i> · 浮动 <i>-40,379</i></span></span><span class="n"><span class="down">-310,746</span><small>本段落袋</small></span></div><div class="step"><span class="t">23:09</span><span class="a"><span class="nm">平仓</span><span class="q">595.0 张全部平掉</span><span class="sub">标记价 <i>1,308</i> · 保证金 <i>155,662</i> · 实际杠杆 <i>1.28x</i> · 强平 <i>292.14</i></span></span><span class="n"><span class="down">-214,697</span><small>本次已实现</small></span></div></div>
+</article><article class="life">
+  <div class="life-h">
+    <span class="sym">BTCUSDT</span>
+    <span class="badge l">多</span>
+    <span class="badge n">5.00x</span>
+    <span class="spine">11-06 17:07 开仓 <b>→</b> 11-06 20:50 平仓 <b>·</b> 持有 3 小时</span>
+    <span class="res"><span class="v up">+1,768</span>
+      <span class="l">已实现 USDT</span></span>
+  </div>
+  <svg class="life-svg" viewBox="0 0 720 132" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" y1="83.4" x2="720" y2="83.4"/><polygon class="f" points="6.0,110 6.0,60.1 714.0,50.7 714.0,110"/><polyline class="l" points="6.0,60.1 714.0,50.7"/><circle class="d open" cx="6.0" cy="60.1" r="3"/><circle class="d close" cx="714.0" cy="50.7" r="3"/><text class="ax" x="12" y="47.1">76,014</text><text class="ax r" x="708" y="37.7">76,068</text><text class="tk" x="12" y="126">11-06 17:07</text><text class="tk r" x="708" y="126">11-06 20:50</text></svg>
+  <div class="facts">
+    <div><div class="l">开仓均价</div><div class="v">75,882</div></div>
+    <div><div class="l">最大数量</div><div class="v">9.73</div></div>
+    <div><div class="l">最大保证金</div><div class="v">148,029</div></div>
+    <div><div class="l">最差浮动</div><div class="v up">+1,291</div></div>
+    <div><div class="l">最好浮动</div><div class="v up">+1,291</div></div>
+  </div>
+  <div class="steps"><div class="step"><span class="t">17:07</span><span class="a"><span class="nm">新开仓</span><span class="q">9.73 张</span><span class="sub">标记价 <i>76,014</i> · 保证金 <i>147,924</i> · 实际杠杆 <i>4.93x</i> · 强平 <i>60,856</i> · 浮动 <i>+1,291</i></span></span><span class="n"><span class="up">+1,291</span><small>浮动</small></span></div><div class="step"><span class="t">20:50</span><span class="a"><span class="nm">平仓</span><span class="q">9.73 张全部平掉</span><span class="sub">标记价 <i>76,068</i> · 保证金 <i>148,029</i> · 实际杠杆 <i>4.91x</i> · 强平 <i>60,856</i></span></span><span class="n"><span class="down">+1,768</span><small>本次已实现</small></span></div></div>
+</article><article class="life">
+  <div class="life-h">
+    <span class="sym">ETHUSDT</span>
+    <span class="badge s">空</span>
+    <span class="badge n">20.00x</span>
+    <span class="spine">11-05 03:03 开仓 <b>→</b> 11-06 03:15 平仓 <b>·</b> 持有 1 天 0 时</span>
+    <span class="res"><span class="v up">+947,072</span>
+      <span class="l">已实现 USDT</span></span>
+  </div>
+  <svg class="life-svg" viewBox="0 0 720 132" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" y1="27.1" x2="720" y2="27.1"/><polygon class="f" points="6.0,110 6.0,28.3 6.6,28.7 21.9,26.4 28.8,31.7 714.0,107.8 714.0,110"/><polyline class="l" points="6.0,28.3 6.6,28.7 21.9,26.4 28.8,31.7 714.0,107.8"/><circle class="d open" cx="6.0" cy="28.3" r="3"/><circle class="d add" cx="6.6" cy="28.7" r="3"/><circle class="d add" cx="21.9" cy="26.4" r="3"/><circle class="d add" cx="28.8" cy="31.7" r="3"/><circle class="d close" cx="714.0" cy="107.8" r="3"/><text class="ax" x="12" y="15.3">2,414</text><text class="ax r" x="708" y="94.8">2,252</text><text class="tk" x="12" y="126">11-05 03:03</text><text class="tk r" x="708" y="126">11-06 03:15</text></svg>
+  <div class="facts">
+    <div><div class="l">开仓均价</div><div class="v">2,417</div></div>
+    <div><div class="l">最大数量</div><div class="v">5,864.1</div></div>
+    <div><div class="l">最大保证金</div><div class="v">705,819</div></div>
+    <div><div class="l">最差浮动</div><div class="v down">-3,182</div></div>
+    <div><div class="l">最好浮动</div><div class="v up">+52,970</div></div>
+  </div>
+  <div class="steps"><div class="step"><span class="t">03:03</span><span class="a"><span class="nm">新开仓</span><span class="q">1,461.2 张</span><span class="sub">标记价 <i>2,414</i> · 保证金 <i>352,783</i> · 实际杠杆 <i>4.97x</i> · 强平 <i>2,879</i> · 浮动 <i>+3,323</i></span></span><span class="n"><span class="up">+3,323</span><small>浮动</small></span></div><div class="step"><span class="t">03:05</span><span class="a"><span class="nm">加仓 3 次</span><span class="q">1,461.2<em>→</em>5,864.1 张</span><span class="sub">标记价 <i>2,407</i> · 保证金 <i>705,819</i> · 实际杠杆 <i>18.66x</i> · 强平 <i>2,509</i> · 浮动 <i>+52,970</i></span></span><span class="n"><span class="up">+52,970</span><small>浮动</small></span></div><div class="step"><span class="t">03:15</span><span class="a"><span class="nm">平仓</span><span class="q">5,864.1 张全部平掉</span><span class="sub">标记价 <i>2,252</i> · 保证金 <i>660,371</i> · 实际杠杆 <i>7.92x</i> · 强平 <i>2,509</i></span></span><span class="n"><span class="down">+947,072</span><small>本次已实现</small></span></div></div>
+</article>
+
+    <div class="sec-h">
+      <h2>信息同步</h2>
+      <span>禁言群 → 交易区 → 通知 → 群友闲聊，熬鹰本人标星</span>
+      <span class="r">23 条</span>
+    </div>
+    <div class="feed"><div class="col"><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-07 04:27</span></div><div class="txt">https://x.com/thankucrypto/status/2118802274772516965?s=46</div><div class="meta"></div></div><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-07 04:23</span></div><div class="txt">速度，预计24小时内，抹茶的资金就被标记，再也提不出来了</div><div class="meta"></div></div><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-07 04:22</span></div><div class="txt">AggrNews: US TREASURY SAYS FINCEN ORDER CUTS OFF MEXC GLOBAL FROM US FINANCIAL SYSTEM OVER TRANSACTIONS LINKED TO SANCTIONS EVASION BY IRAN, NORTH KOREA, RUSSIA: RTRS  AggrNews: 美国财政部表示，FinCEN的命令切断了MEXC Global与美国金融系统的联系，因其交易与伊朗、朝鲜和俄罗斯的规避制裁行为有关：路透社  ———————————— 2026-11-07 04:00:16</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-07 04:21</span></div><div class="txt">MEXC有钱的速度提现！</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-07 04:21</span></div><div class="txt">MEXC有钱的速度提现</div><div class="meta"></div></div><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-07 04:21</span></div><div class="txt">MEXC有钱的速度提现</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-07 04:21</span></div><div class="txt">抹茶有钱的速度提现！</div><div class="meta"></div></div><div class="item own"><div class="top"><span class="src-tag owner">禁言群</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-06 03:47</span></div><div class="txt">可能会玩到20号，没啥事就还是群里聊天吧</div><div class="meta"><span>已编辑</span></div></div></div><div class="col"><div class="item own"><div class="top"><span class="src-tag trade">交易区</span><span class="who"><b>仓位机器人</b></span><span class="tm" style="margin-left:auto">11-06 20:50</span></div><div class="txt">熬鹰当前全部持仓  持仓数量：0  当前无持仓  总保证金：0.00 USDT 总浮动收益：0.00 USDT 总已实现盈亏：0.00 USDT 更新时间：2026-11-07 19:34:30 UTC+8</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag trade">交易区</span><span class="who"><b>仓位机器人</b></span><span class="tm" style="margin-left:auto">11-06 20:50</span></div><div class="txt">熬鹰交易信号  📈 注意，平仓 币种：BTCUSDT 永续 | 全仓 | 5x 方向：做多 🟩 平仓数量：9.73 BTC 开仓均价：75881.60 USDT 当前价格：76068.35 USDT 标记价格：76068.35 USDT 保证金：148029.00 USDT (全仓) 实际杠杆：4.91x 强平价格：60855.77 USDT 已实现盈亏：1767.79 USDT (1.19%) 更新时间：2026-11-06 20:50:48 UTC+8</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag trade">交易区</span><span class="who"><b>仓位机器人</b></span><span class="tm" style="margin-left:auto">11-06 17:07</span></div><div class="txt">熬鹰当前全部持仓  持仓数量：1  1. 币种：BTCUSDT 永续 | 全仓 | 5x 方向：做多 🟩 持仓量：9.73 BTC 开仓均价：75881.60 USDT 当前价格：76068.35 USDT 标记价格：76068.35 USDT 保证金：148029.00 USDT (全仓) 实际杠杆：4.91x 强平价格：60855.77 USDT 浮动收益：1817.05 USDT (1.23%) 已实现盈亏：0.00 USDT  总保证金：148029.00 USDT 总浮动收益：1817.05 USDT 总已实现盈亏：0.00 USDT 更新时间：2026-11-06 20:49:38 UTC+8</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag trade">交易区</span><span class="who"><b>仓位机器人</b></span><span class="tm" style="margin-left:auto">11-06 17:07</span></div><div class="txt">熬鹰交易信号  📈 注意，新开仓 币种：BTCUSDT 永续 | 全仓 | 5x 方向：做多 🟩 持仓量：9.73 BTC 开仓均价：75881.60 USDT 当前价格：76014.30 USDT 标记价格：76014.30 USDT 保证金：147923.83 USDT (全仓) 实际杠杆：4.93x 强平价格：60855.77 USDT 浮动收益：1291.17 USDT (0.87%) 已实现盈亏：0.00 USDT 更新时间：2026-11-06 17:07:50 UTC+8</div><div class="meta"></div></div><div class="item own"><div class="top"><span class="src-tag trade">交易区</span><span class="who"><b>仓位机器人</b></span><span class="tm" style="margin-left:auto">11-06 03:15</span></div><div class="txt">熬鹰当前全部持仓  持仓数量：0  当前无持仓  总保证金：0.00 USDT 总浮动收益：0.00 USDT 总已实现盈亏：0.00 USDT 更新时间：2026-11-06 17:06:45 UTC+8</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag trade">交易区</span><span class="who"><b>仓位机器人</b></span><span class="tm" style="margin-left:auto">11-06 03:15</span></div><div class="txt">熬鹰交易信号  📈 注意，平仓 币种：ETHUSDT 永续 | 全仓 | 20x 方向：做空 🟥 平仓数量：5864.11 ETH 开仓均价：2416.28 USDT 当前价格：2252.24 USDT 标记价格：2252.24 USDT 保证金：660370.59 USDT (全仓) 实际杠杆：7.92x 强平价格：2508.89 USDT 已实现盈亏：947071.67 USDT (143.42%) 更新时间：2026-11-06 03:15:45 UTC+8</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag owner">通知</span><span class="who"><b>助理 阿伟</b></span><span class="tm" style="margin-left:auto">11-07 17:18</span></div><div class="txt">很多如果不是从网页上注册的估计都没有绑定，记得看一眼，没绑定的可以直接网页上走链接在登录一遍就行，手机号验证问题现在就是发我注册邮箱一般第二天就解决了</div><div class="meta"></div></div><div class="item own"><div class="top"><span class="src-tag owner">通知</span><span class="who"><b>助理 阿伟</b></span><span class="tm" style="margin-left:auto">11-07 08:38</span></div><div class="txt">现在手机上点开奖励就可以直接看到了，注册一定要在网页上点链接并且用对应椅子去注册！（香港 德国 越南 台湾 韩国 梯子都是可以的）</div><div class="meta"><span>已编辑</span></div></div></div><div class="col"><div class="item own"><div class="top"><span class="src-tag owner">通知</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-06 15:01</span></div><div class="txt">来红包</div><div class="meta"><span>已编辑</span></div></div><div class="item own"><div class="top"><span class="src-tag owner">通知</span><span class="who"><b>熬鹰资本</b></span><span class="tm" style="margin-left:auto">11-01 19:41</span></div><div class="txt">气死我了</div><div class="meta"><span>已编辑</span></div></div><div class="fold">群友闲聊 · 仅列最近 5 条</div><div class="item"><div class="top"><span class="src-tag ">聊天群</span><span class="who"><b>SKT.Faker</b></span><span class="tm" style="margin-left:auto">11-07 19:32</span></div><div class="txt">出了跟单</div><div class="meta"></div></div><div class="item"><div class="top"><span class="src-tag ">聊天群</span><span class="who"><b>SKT.Faker</b></span><span class="tm" style="margin-left:auto">11-07 19:32</span></div><div class="txt">就这么点了</div><div class="meta"></div></div><div class="item"><div class="top"><span class="src-tag ">聊天群</span><span class="who"><b>yo</b></span><span class="tm" style="margin-left:auto">11-07 19:26</span></div><div class="txt">梭哈三次对一次就好了</div><div class="meta"></div></div><div class="item"><div class="top"><span class="src-tag ">聊天群</span><span class="who"><b>万三</b></span><span class="tm" style="margin-left:auto">11-07 19:25</span></div><div class="txt">前面损了两单大的，那单梭哈的场外应该很多人不敢跟，</div><div class="meta"></div></div></div></div>
+    <div class="mband"><div class="mband"><div class="mh">媒体 · 最近 12 条<span>纯图片/文件不占发言位</span></div><div class="mrow"><span class="mcell"><span class="mk photo"></span><span class="mt">图片</span><span class="ms">聊天群 · 11-07 19:32</span></span><span class="mcell"><span class="mk photo"></span><span class="mt">图片</span><span class="ms">聊天群 · 11-07 19:20</span></span><span class="mcell"><span class="mk document"></span><span class="mt">文件</span><span class="ms">聊天群 · 11-07 19:19</span></span><span class="mcell"><span class="mk photo"></span><span class="mt">图片</span><span class="ms">聊天群 · 11-07 19:19</span></span><span class="mcell"><span class="mk photo"></span><span class="mt">图片</span><span class="ms">聊天群 · 11-07 19:08</span></span><span class="mcell"><span class="mk photo"></span><span class="mt">图片</span><span class="ms">聊天群 · 11-07 19:07</span></span><span class="mcell"><span class="mk document"></span><span class="mt">文件</span><span class="ms">聊天群 · 11-07 18:34</span></span><span class="mcell"><span class="mk document"></span><span class="mt">文件</span><span class="ms">聊天群 · 11-07 18:23</span></span><span class="mcell"><span class="mk photo"></span><span class="mt">图片</span><span class="ms">聊天群 · 11-07 18:23</span></span><span class="mcell"><span class="mk document"></span><span class="mt">文件</span><span class="ms">聊天群 · 11-07 18:17</span></span><span class="mcell"><span class="mk document"></span><span class="mt">文件</span><span class="ms">聊天群 · 11-07 18:06</span></span><span class="mcell"><span class="mk document"></span><span class="mt">文件</span><span class="ms">聊天群 · 11-07 17:19</span></span></div></div></div>
+  </main>
+</div>
+</body></html>

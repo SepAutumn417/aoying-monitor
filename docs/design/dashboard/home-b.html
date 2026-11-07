@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="dsh-design" content="web">
+<title>方向 B · 仓位档案 — 首页 · 熬鹰监控</title>
+<style>
+:root{
+  --bg:#0B0E12; --paper:#11151A; --line:#2E353E;
+  --tx:#E4E0D8; --dim:#B0A997; --dim2:#948D7E;
+  --long:#67B98C; --short:#C9726B; --gold:#C9A063; --white:#F5F2EC;
+  --serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --sans:"Noto Sans SC","Microsoft YaHei UI",sans-serif;
+  --num:"Bahnschrift","DIN Alternate","Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:14px/1.65 var(--sans);
+  -webkit-font-smoothing:antialiased}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.up{color:var(--long)} .down{color:var(--short)}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 40px 70px}
+
+.top{display:flex;align-items:flex-end;gap:26px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.top h1{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:.06em;color:var(--white)}
+.top .meta{font-size:13px;color:var(--dim2);line-height:1.8;padding-bottom:3px}
+.top .meta b{color:var(--dim);font-weight:400}
+.top .right{margin-left:auto;text-align:right;font-size:13px;color:var(--dim2);line-height:1.8}
+.top .right b{color:var(--dim);font-weight:400}
+.nav{display:flex;gap:8px;font-size:13px;padding:12px 0 0}
+.nav a{color:var(--dim2);text-decoration:none;padding:6px 10px;border-bottom:1px solid transparent}
+.nav a.on{color:var(--white);border-bottom-color:var(--gold)}
+
+.now{display:grid;grid-template-columns:1fr 250px;gap:40px;align-items:center;
+  padding:34px 0 30px;border-bottom:1px solid var(--line)}
+.now .kicker{font-size:13px;letter-spacing:.2em;color:var(--dim2);margin-bottom:10px}
+.now .head{font-family:var(--serif);font-size:34px;line-height:1.25;color:var(--white);letter-spacing:.02em}
+.now .head em{font-style:normal;color:var(--gold)}
+.now .sub{margin-top:12px;font-size:14px;color:var(--dim);max-width:44em}
+.now .side{border-left:1px solid var(--line);padding-left:22px}
+.now .side .l{font-size:13px;color:var(--dim2);margin-bottom:2px}
+.now .side .v{font-family:var(--num);font-size:24px;color:var(--white);line-height:1.3}
+.now .side .v.sm{font-size:20px}
+.now .side .row+.row{margin-top:12px}
+.now .side .row{padding:0}
+
+.lede{display:flex;align-items:baseline;gap:14px;margin:36px 0 8px}
+.lede h2{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--white);letter-spacing:.1em}
+.lede span{font-size:13px;color:var(--dim2)}
+
+.life{border-top:1px solid var(--line);padding:18px 0 20px}
+.life-top{display:flex;align-items:baseline;gap:12px}
+.life-top h3{font-family:var(--serif);font-size:20px;color:var(--white);letter-spacing:.04em;font-weight:600}
+.life-top .dir{font-size:13px;color:var(--dim2)}
+.life-top .dir.long{color:var(--long)} .life-top .dir.short{color:var(--short)}
+.life-top .win{font-size:13px;color:var(--dim2)}
+.life-top .pnl{margin-left:auto;font-family:var(--num);font-size:20px}
+.life-top .pnl small{font-family:var(--sans);font-size:12px;color:var(--dim2);margin-left:8px}
+
+.rail{margin-top:16px;position:relative;height:78px}
+.track{position:absolute;left:0;right:0;top:42px;height:1px;background:linear-gradient(90deg,var(--dim2),var(--line) 40%,var(--line))}
+.node{position:absolute;top:36px;width:1px;height:13px;background:var(--dim2)}
+.node i{position:absolute;top:-3px;left:-3px;width:7px;height:7px;border-radius:50%;
+  background:var(--dim2);display:block}
+.node.open i{background:var(--long)} .node.add i{background:var(--long)}
+.node.cut i{background:var(--gold)} .node.close i{background:var(--short)}
+.node.lev i{background:#66727F}
+.node.open,.node.close{height:19px;top:30px}
+.pin{position:absolute;top:2px;font-size:13px;color:var(--dim);white-space:nowrap;
+  transform:translateX(-50%);font-family:var(--num)}
+.pin.edge{transform:none}
+.pin.edge-r{transform:translateX(-100%)}
+.lab{position:absolute;top:58px;font-size:13px;color:var(--dim2);white-space:nowrap;
+  transform:translateX(-50%)}
+.lab.edge{transform:none} .lab.edge-r{transform:translateX(-100%)}
+.life-foot{display:flex;gap:26px;margin-top:6px;font-size:13px;color:var(--dim2);flex-wrap:wrap}
+.life-foot b{color:var(--dim);font-weight:400;font-family:var(--num)}
+.life-foot .sep{color:#B0A997}
+
+.empty-flat{border-top:1px solid var(--line);padding:28px 0;font-size:14px;color:var(--dim2)}
+</style></head><body>
+<div class="wrap">
+  <div class="top">
+    <h1>熬鹰 · 交易档案</h1>
+    <div class="meta">书友会 4 分区 · <b>采集在线</b><br>最后快照 11-07 10:47</div>
+    <div class="right">只读监控 · 不接交易<br><span class="num">17</span> 个已完成仓位 / <span class="num">96</span> 次动作</div>
+  </div>
+
+  <nav class="nav"><a class="on" href="#">档案</a><a href="#">持仓</a><a href="#">原文</a><a href="#">数据源</a></nav>
+
+  <section class="now">
+    <div>
+      <div class="kicker">此刻</div>
+      <div class="head">空仓。<em>等下一次开仓。</em></div>
+      <div class="sub">机器人 11-07 10:47 的快照写明「当前无持仓」。上一次动作是 11-06 20:50 平掉 BTCUSDT 多头，已实现 +1,768 USDT。</div>
+    </div>
+    <div class="side">
+      <div class="row"><div class="l">累计已实现</div><div class="v up">+800,776</div></div>
+      <div class="row"><div class="l">已完成仓位</div><div class="v sm">17 个</div></div>
+      <div class="row"><div class="l">最近一次动作</div><div class="v sm">11-06 20:50</div></div>
+    </div>
+  </section>
+
+  <div class="lede"><h2>最近的仓位</h2><span>每一条是一个仓位从开到平的全过程，节点位置按真实时间排布</span></div>
+  <article class="life">
+  <div class="life-top">
+    <h3>BTCUSDT</h3>
+    <span class="dir long">多 · 5.00x</span>
+    <span class="win">11-06 17:07 开 → 11-06 20:50 平</span>
+    <span class="pnl up">+1,768 <small>USDT</small></span>
+  </div>
+  <div class="rail"><div class="track"></div><span class="node open" style="left:0.00%"><i></i></span><span class="pin edge" style="left:0.00%">76,014</span><span class="lab edge" style="left:0.00%">开</span><span class="node close" style="left:100.00%"><i></i></span><span class="pin edge-r" style="left:100.00%">76,068</span><span class="lab edge-r" style="left:100.00%">平</span></div>
+  <div class="life-foot">
+    <span>开仓均价 <b>75,882</b></span><span class="sep">|</span>
+    <span>最大数量 <b>9.73</b></span><span class="sep">|</span>
+    <span>动作 <b>2</b> 次</span><span class="sep">|</span>
+    <span>持有 <b>3 小时</b></span>
+  </div>
+</article><article class="life">
+  <div class="life-top">
+    <h3>ETHUSDT</h3>
+    <span class="dir short">空 · 20.00x</span>
+    <span class="win">11-05 03:03 开 → 11-06 03:15 平</span>
+    <span class="pnl up">+947,072 <small>USDT</small></span>
+  </div>
+  <div class="rail"><div class="track"></div><span class="node open" style="left:0.00%"><i></i></span><span class="pin edge" style="left:0.00%">2,414</span><span class="lab edge" style="left:0.00%">开</span><span class="node add" style="left:0.08%"><i></i></span><span class="node add" style="left:2.25%"><i></i></span><span class="node add" style="left:3.22%"><i></i></span><span class="node close" style="left:100.00%"><i></i></span><span class="pin edge-r" style="left:100.00%">2,252</span><span class="lab edge-r" style="left:100.00%">平</span></div>
+  <div class="life-foot">
+    <span>开仓均价 <b>2,417</b></span><span class="sep">|</span>
+    <span>最大数量 <b>5,864</b></span><span class="sep">|</span>
+    <span>动作 <b>5</b> 次</span><span class="sep">|</span>
+    <span>持有 <b>1 天 0 时</b></span>
+  </div>
+</article><article class="life">
+  <div class="life-top">
+    <h3>MUUSDT</h3>
+    <span class="dir long">多 · 5.00x</span>
+    <span class="win">11-04 13:53 开 → 11-05 03:04 平</span>
+    <span class="pnl down">-287,525 <small>USDT</small></span>
+  </div>
+  <div class="rail"><div class="track"></div><span class="node open" style="left:0.00%"><i></i></span><span class="pin edge" style="left:0.00%">851.44</span><span class="lab edge" style="left:0.00%">开</span><span class="node lev" style="left:0.14%"><i></i></span><span class="node add" style="left:4.53%"><i></i></span><span class="node close" style="left:100.00%"><i></i></span><span class="pin edge-r" style="left:100.00%">805.25</span><span class="lab edge-r" style="left:100.00%">平</span></div>
+  <div class="life-foot">
+    <span>开仓均价 <b>850.72</b></span><span class="sep">|</span>
+    <span>最大数量 <b>5,892</b></span><span class="sep">|</span>
+    <span>动作 <b>4</b> 次</span><span class="sep">|</span>
+    <span>持有 <b>13 小时</b></span>
+  </div>
+</article><article class="life">
+  <div class="life-top">
+    <h3>ETHUSDT</h3>
+    <span class="dir short">空 · 10.00x</span>
+    <span class="win">10-30 16:27 开 → 11-04 13:52 平</span>
+    <span class="pnl down">-296,686 <small>USDT</small></span>
+  </div>
+  <div class="rail"><div class="track"></div><span class="node open" style="left:0.00%"><i></i></span><span class="pin edge" style="left:0.00%">2,228</span><span class="lab edge" style="left:0.00%">开</span><span class="node add" style="left:0.18%"><i></i></span><span class="node lev" style="left:1.59%"><i></i></span><span class="node add" style="left:4.03%"><i></i></span><span class="node lev" style="left:4.06%"><i></i></span><span class="node add" style="left:5.86%"><i></i></span><span class="node cut" style="left:99.82%"><i></i></span><span class="pin edge-r" style="left:99.82%">2,297</span><span class="lab edge-r" style="left:99.82%">减</span><span class="node cut" style="left:99.89%"><i></i></span><span class="node cut" style="left:99.95%"><i></i></span><span class="node close" style="left:100.00%"><i></i></span></div>
+  <div class="life-foot">
+    <span>开仓均价 <b>2,229</b></span><span class="sep">|</span>
+    <span>最大数量 <b>1,664</b></span><span class="sep">|</span>
+    <span>动作 <b>10</b> 次</span><span class="sep">|</span>
+    <span>持有 <b>4 天 21 时</b></span>
+  </div>
+</article><article class="life">
+  <div class="life-top">
+    <h3>SNDKUSDT</h3>
+    <span class="dir long">多 · 2.00x</span>
+    <span class="win">10-30 10:39 开 → 10-30 15:45 平</span>
+    <span class="pnl up">+3,197 <small>USDT</small></span>
+  </div>
+  <div class="rail"><div class="track"></div><span class="node open" style="left:0.00%"><i></i></span><span class="pin edge" style="left:0.00%">1,290</span><span class="lab edge" style="left:0.00%">开</span><span class="node close" style="left:100.00%"><i></i></span><span class="pin edge-r" style="left:100.00%">1,294</span><span class="lab edge-r" style="left:100.00%">平</span></div>
+  <div class="life-foot">
+    <span>开仓均价 <b>1,288</b></span><span class="sep">|</span>
+    <span>最大数量 <b>503.37</b></span><span class="sep">|</span>
+    <span>动作 <b>2</b> 次</span><span class="sep">|</span>
+    <span>持有 <b>5 小时</b></span>
+  </div>
+</article>
+
+  <div class="empty-flat">更早的 12 个仓位在「档案」里，可按时段、币种、盈亏筛选。</div>
+</div>
+</body></html>
