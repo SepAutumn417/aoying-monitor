@@ -23,6 +23,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.copy import ledger as copy_ledger
 from app.db import SessionLocal
 from app.events import append_event
 from app.models import utcnow
@@ -420,6 +421,16 @@ class TelegramCollector:
                 dialog.last_message_id = max_id
                 dialog.last_synced_at = utcnow()
                 await db.commit()
+
+            # Derive the trading signal in the same transaction as the message
+            # so the ledger can never drift from what the bot actually said.
+            # A parser failure must not cost us the archive row.
+            try:
+                await copy_ledger.ingest_message(db, row)
+            except Exception:  # pragma: no cover - defensive
+                log.warning(
+                    "signal derivation failed for message %s", row.message_id, exc_info=True
+                )
 
             payload = message_payload(row, dialog)
             payload["outcome"] = outcome

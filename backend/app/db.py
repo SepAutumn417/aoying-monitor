@@ -22,6 +22,7 @@ async def create_all() -> None:
     on a bare laptop and inside the test suite without a migration step.
     """
     from app import telegram_models  # noqa: F401 - register ingestion tables
+    from app.copy_models import Position, PositionEvent, Signal  # noqa: F401 - signal layer
     from app.models import Base
     from app.telegram_migrations import upgrade_telegram_schema
 

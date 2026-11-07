@@ -60,3 +60,11 @@ app/**/GeneratedPluginRegistrant.*
 *.session-*
 data/
 backups/
+
+# 本机 SSH 代理桥接（只在本机跑，不进仓库）
+/bridge.bat
+/ssh_tcp_bridge.js
+
+# 仓库备份与临时配置
+/.repo-backups/
+/.ghconfig/
