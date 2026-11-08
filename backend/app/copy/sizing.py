@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.copy.account import ContractBook
 from app.copy.contracts import ContractSpec, spec_for
 
 
@@ -49,8 +50,13 @@ def size_for(
     price: float | None,
     symbol: str,
     closing: bool = False,
+    book: ContractBook | None = None,
 ) -> Sizing | None:
-    spec, measured = spec_for(symbol)
+    """Size one order. `book` supplies live contract specs when available."""
+    if book is not None:
+        spec, measured = book.spec_for(symbol)
+    else:
+        spec, measured = spec_for(symbol)
     notes: list[str] = []
     if not measured:
         notes.append("contract_spec_assumed")

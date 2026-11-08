@@ -81,6 +81,16 @@ class Settings(BaseModel):
     copy_equity_usdt: float = float(os.getenv("COPY_EQUITY_USDT", "1000"))
     copy_paused: bool = os.getenv("COPY_PAUSED", "").lower() in {"1", "true", "yes"}
 
+    # Bitget read-only credentials. The key must be created with futures trading
+    # only and withdrawal permanently disabled; the adapter in app/copy/bitget.py
+    # only ever issues GETs, so no order or transfer endpoint is reachable.
+    bitget_api_key: str = os.getenv("BITGET_API_KEY", "")
+    bitget_secret: str = os.getenv("BITGET_SECRET", "")
+    bitget_passphrase: str = os.getenv("BITGET_PASSPHRASE", "")
+
+    @property
+    def bitget_configured(self) -> bool:
+        return bool(self.bitget_api_key and self.bitget_secret and self.bitget_passphrase)
 
     cors_origins: list[str] = _env_list(
         "CORS_ORIGINS",

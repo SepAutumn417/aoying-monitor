@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.copy.account import ContractBook
 from app.copy.sizing import price_of, size_for
 from app.copy_models import CopyIntent, CopyPosition, Position, Signal
 
@@ -56,7 +57,13 @@ def _realised_ratio(signal: Signal, position: Position) -> float:
     return signal.realized / basis
 
 
-async def plan_signal(db: AsyncSession, signal: Signal, *, equity: float) -> CopyIntent:
+async def plan_signal(
+    db: AsyncSession,
+    signal: Signal,
+    *,
+    equity: float,
+    contracts: ContractBook | None = None,
+) -> CopyIntent:
     """Plan one signal. Always returns an intent, even when it does nothing."""
 
     symbol, side = signal.symbol, signal.side
@@ -72,6 +79,7 @@ async def plan_signal(db: AsyncSession, signal: Signal, *, equity: float) -> Cop
         price=price,
         symbol=symbol,
         closing=closing,
+        book=contracts,
     )
 
     note = sizing.note if sizing else "no_price"
@@ -155,7 +163,9 @@ async def plan_signal(db: AsyncSession, signal: Signal, *, equity: float) -> Cop
     return intent
 
 
-async def replay(db: AsyncSession, *, equity: float) -> PlanStats:
+async def replay(
+    db: AsyncSession, *, equity: float, contracts: ContractBook | None = None
+) -> PlanStats:
     """Rebuild the shadow book from every signal on record, in order."""
 
     await db.execute(delete(CopyIntent))
@@ -167,7 +177,7 @@ async def replay(db: AsyncSession, *, equity: float) -> PlanStats:
 
     stats = PlanStats(signals=len(signals))
     for signal in signals:
-        intent = await plan_signal(db, signal, equity=equity)
+        intent = await plan_signal(db, signal, equity=equity, contracts=contracts)
         stats.intents += 1
         if intent.status == "skipped":
             stats.skipped += 1

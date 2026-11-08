@@ -16,6 +16,8 @@ from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
 from app.copy import ledger, planner
+from app.copy.account import EquityUnavailable, build_client, load_contracts, resolve_equity
+from app.copy.bitget import BitgetError
 from app.copy_models import CopyIntent, CopyPosition, Position, PositionEvent, Signal
 from app.db import get_db
 from app.models import User
@@ -289,6 +291,10 @@ class ReplayResult(BaseModel):
     intents: int
     skipped: int
     realized: float
+    equity: float
+    equity_source: str
+    contracts_measured: int
+    contracts_assumed: list[str] = Field(default_factory=list)
 
 
 @router.get("/copy/intents", response_model=CopyIntentList)
@@ -369,11 +375,93 @@ async def replay_copy(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(current_user),
 ) -> ReplayResult:
-    equity = (body.equity if body and body.equity else None) or get_settings().copy_equity_usdt
-    stats = await planner.replay(db, equity=equity)
+    """Re-derive the shadow book at a stated equity and measured contract specs.
+
+    An explicit ``equity`` in the body always wins: it is how a what-if run is
+    asked for. Otherwise the live Bitget equity is used, and the configured
+    constant only stands in when no credentials exist at all. A configured
+    account that cannot be read fails the request instead of quietly sizing
+    from that constant.
+    """
+    settings = get_settings()
+    if body is not None and body.equity:
+        equity, source, book = body.equity, "request", None
+    else:
+        client = build_client(settings)
+        try:
+            snapshot = await resolve_equity(client, settings.copy_equity_usdt)
+        except EquityUnavailable as error:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(error)
+            ) from None
+        equity, source = snapshot.equity, snapshot.source
+        book = None
+        if client is not None:
+            try:
+                book = await load_contracts(client)
+            except BitgetError as error:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY, detail=error.code
+                ) from None
+
+    stats = await planner.replay(db, equity=equity, contracts=book)
     return ReplayResult(
         signals=stats.signals,
         intents=stats.intents,
         skipped=stats.skipped,
         realized=stats.realized,
+        equity=equity,
+        equity_source=source,
+        contracts_measured=len(book.specs) if book else 0,
+        contracts_assumed=sorted(book.assumed) if book else [],
+    )
+
+
+class AccountStatus(BaseModel):
+    """What the sizing layer would use right now, and where it came from."""
+
+    configured: bool
+    source: str
+    equity: float | None = None
+    detail: str = ""
+    contracts_measured: int = 0
+    contracts_assumed: list[str] = Field(default_factory=list)
+
+
+@router.get("/copy/account", response_model=AccountStatus)
+async def copy_account(user: User = Depends(current_user)) -> AccountStatus:
+    """Read live Bitget equity and contract specs. GET-only: never trades.
+
+    Falls back to the configured stand-in equity only when no credentials exist.
+    A configured account that fails to answer returns ``equity=None`` plus a local
+    error code, so the UI can show "unknown" rather than a fabricated number.
+    """
+    settings = get_settings()
+    client = build_client(settings)
+    if client is None or not client.configured:
+        return AccountStatus(
+            configured=False,
+            source="config",
+            equity=settings.copy_equity_usdt,
+            detail="bitget_not_configured",
+        )
+    try:
+        snapshot = await resolve_equity(client, settings.copy_equity_usdt)
+    except EquityUnavailable as error:
+        return AccountStatus(configured=True, source="bitget", detail=str(error))
+    try:
+        book = await load_contracts(client)
+    except BitgetError as error:
+        return AccountStatus(
+            configured=True,
+            source=snapshot.source,
+            equity=snapshot.equity,
+            detail=error.code,
+        )
+    return AccountStatus(
+        configured=True,
+        source=snapshot.source,
+        equity=snapshot.equity,
+        contracts_measured=len(book.specs),
+        contracts_assumed=sorted(book.assumed),
     )
