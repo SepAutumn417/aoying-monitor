@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.copy import ledger as copy_ledger
+from app.copy import notify
 from app.db import SessionLocal
 from app.events import append_event
 from app.models import utcnow
@@ -425,8 +426,9 @@ class TelegramCollector:
             # Derive the trading signal in the same transaction as the message
             # so the ledger can never drift from what the bot actually said.
             # A parser failure must not cost us the archive row.
+            derived: tuple[Any, Any, bool] = (None, None, False)
             try:
-                await copy_ledger.ingest_message(db, row)
+                derived = await copy_ledger.ingest_message_result(db, row)
             except Exception:  # pragma: no cover - defensive
                 log.warning(
                     "signal derivation failed for message %s", row.message_id, exc_info=True
@@ -436,6 +438,22 @@ class TelegramCollector:
             payload["outcome"] = outcome
             kind = "telegram.message.edited" if outcome == "edited" else "telegram.message"
             event = await append_event(db, kind, payload)
+
+            # A structured signal is what a phone can turn into "新开多 BTCUSDT
+            # 10x" with its own sound. Only a first sight pushes: an edit or a
+            # backfill over covered ground must not ring twice.
+            signal, position, created = derived
+            if created and signal is not None:
+                await append_event(
+                    db,
+                    notify.event_kind(signal.kind),
+                    notify.signal_payload(
+                        signal,
+                        position=position,
+                        dialog=dialog.title or "",
+                        text=row.text or "",
+                    ),
+                )
 
         self.status.last_message_at = utcnow()
         self.status.messages_total += 1

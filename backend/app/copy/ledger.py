@@ -46,23 +46,48 @@ async def ingest(
 ) -> Signal | None:
     """Parse one message and apply it. Idempotent on (dialog_id, message_id)."""
 
+    signal, _, _ = await ingest_result(
+        db, dialog_id=dialog_id, message_id=message_id, text=text, posted_at=posted_at
+    )
+    return signal
+
+
+async def ingest_result(
+    db: AsyncSession,
+    *,
+    dialog_id: int,
+    message_id: int,
+    text: str,
+    posted_at: datetime | None = None,
+) -> tuple[Signal | None, Position | None, bool]:
+    """`ingest`, but also hand back the position the signal landed on.
+
+    The collector needs the position to say "this closed your ZEC long" in the
+    push, and re-reading it by (symbol, side, status) after the fact would race
+    with the next message in the same batch.
+
+    The third value says whether this call actually created the signal. A
+    re-ingest of an archived message (an edit, a backfill over ground already
+    covered) must not push the phone a second time.
+    """
+
     if not text:
-        return None
+        return None, None, False
     existing = await db.scalar(
         select(Signal).where(Signal.dialog_id == dialog_id, Signal.message_id == message_id)
     )
     if existing is not None:
-        return existing
+        return existing, None, False
 
     parsed = parse_signal(text)
     if parsed is None:
-        return None
+        return None, None, False
 
     signal = _signal_row(dialog_id, message_id, parsed, posted_at)
     db.add(signal)
     await db.flush()  # assign signal.id for the event row
-    await _apply(db, signal)
-    return signal
+    position = await _apply(db, signal)
+    return signal, position, True
 
 
 def _signal_row(
@@ -172,7 +197,20 @@ async def _apply(db: AsyncSession, signal: Signal) -> Position | None:
 async def ingest_message(db: AsyncSession, message: TelegramMessage) -> Signal | None:
     """Collector hook: derive a signal from an already-stored message."""
 
-    return await ingest(
+    signal, _, _ = await ingest_message_result(db, message)
+    return signal
+
+
+async def ingest_message_result(
+    db: AsyncSession, message: TelegramMessage
+) -> tuple[Signal | None, Position | None, bool]:
+    """`ingest_message`, plus the position and whether this was a first sight.
+
+    The collector only pushes a signal event when `created` is true, so an edit
+    or a backfill re-reading covered ground cannot ring the phone twice.
+    """
+
+    return await ingest_result(
         db,
         dialog_id=message.dialog_id,
         message_id=message.message_id,

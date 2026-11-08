@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.copy import notify
 from app.db import get_db
 from app.events import append_event, latest_id, replay
 from app.models import Device, User
@@ -97,9 +98,35 @@ async def list_events(
 
 @router.post("/events/test")
 async def publish_test_event(
-    db: AsyncSession = Depends(get_db), user: User = Depends(current_user)
+    action: str | None = Query(
+        default=None,
+        description=(
+            "按某个动作发一条测试信号（open/add/reduce/close/leverage）；"
+            "不传则发 system.test"
+        ),
+    ),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(current_user),
 ) -> dict[str, object]:
-    """Emit one event so the delivery path can be exercised before I2 exists."""
+    """Exercise the delivery path, optionally as one of the five signal actions.
+
+    With `action` set this emits a real `signal.<action>` event carrying
+    `test: true`, so both clients run their full alert path -- badge, sound,
+    toast -- while keeping it out of the unread count. Without it the old
+    `system.test` event is still sent, which is what the pre-signal UI expects.
+    """
+
+    if action is not None:
+        if action not in notify.ACTIONS:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                f"未知动作：{action}，可选 {', '.join(notify.ACTIONS)}",
+            )
+        event = await append_event(
+            db, notify.event_kind(action), notify.test_signal_payload(action)
+        )
+        return {"ok": True, "event": event}
+
     event = await append_event(
         db,
         "system.test",
