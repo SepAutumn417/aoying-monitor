@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../app_scope.dart';
 import '../config.dart';
+import '../signals.dart';
+import '../sound.dart';
 import '../theme.dart';
 import '../widgets/page_header.dart';
 import '../widgets/section_card.dart';
@@ -63,13 +65,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _sendTest() async {
+  Future<void> _sendTest({SignalAction? action}) async {
     setState(() => _busy = true);
     try {
-      final event = await _api.publishTestEvent();
+      final event = await _api.publishTestEvent(action: action?.name);
       if (!mounted) return;
+      final label = action == null ? '测试事件' : '「${actionLabel[action]}」信号';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已发送测试事件 #${event.id}')),
+        SnackBar(content: Text('已发送$label #${event.id}')),
       );
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -90,8 +93,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: '设置',
           meta: 'v${AppConfig.appVersion}',
           action: TextButton(
-            onPressed: _busy ? null : _sendTest,
-            child: const Text('发送测试推送', style: TextStyle(fontSize: 11)),
+            onPressed: _busy ? null : () => _sendTest(),
+            child: const Text('系统通知', style: TextStyle(fontSize: 11)),
           ),
         ),
         if (_error != null) ...[
@@ -220,6 +223,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SectionCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: Text('提示音试听', style: Theme.of(context).textTheme.titleMedium),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 10, 12, 6),
+                child: Text(
+                  '每种操作有自己的声音。下面的按钮让服务端真的发一条测试信号，'
+                  '走和真实信号完全相同的路径——数据库事件、WebSocket、扬声器。',
+                  style: TextStyle(color: AppColors.mist, fontSize: 10, height: 1.5),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final action in SignalAction.values)
+                      OutlinedButton(
+                        onPressed: _busy ? null : () => _sendTest(action: action),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(actionLabel[action]!, style: const TextStyle(fontSize: 11)),
+                            Text(
+                              soundLabel[action]!,
+                              style: const TextStyle(color: AppColors.mist, fontSize: 9),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 0, 12, 10),
+                child: Text(
+                  '测试信号不计入未读，也不会被当成真实成交。',
+                  style: TextStyle(color: AppColors.mist, fontSize: 10),
+                ),
+              ),
             ],
           ),
         ),

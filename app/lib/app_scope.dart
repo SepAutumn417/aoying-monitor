@@ -1,21 +1,24 @@
 import 'package:flutter/widgets.dart';
 
+import 'alerts.dart';
 import 'live.dart';
 import 'session.dart';
 
-/// Hand-held dependency scope: one session and one live socket for the app.
+/// Hand-held dependency scope: one session, one live socket, one alert centre.
 ///
-/// Deliberately not a DI package — two controllers do not justify one.
+/// Deliberately not a DI package — three controllers do not justify one.
 class AppScope extends InheritedWidget {
   const AppScope({
     super.key,
     required this.session,
     required this.live,
+    required this.alerts,
     required super.child,
   });
 
   final SessionController session;
   final LiveController live;
+  final AlertController alerts;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -28,7 +31,11 @@ class AppScope extends InheritedWidget {
 
   static LiveController liveOf(BuildContext context) => of(context).live;
 
+  static AlertController alertsOf(BuildContext context) => of(context).alerts;
+
   @override
   bool updateShouldNotify(AppScope oldWidget) =>
-      session != oldWidget.session || live != oldWidget.live;
+      session != oldWidget.session ||
+      live != oldWidget.live ||
+      alerts != oldWidget.alerts;
 }

@@ -56,6 +56,14 @@ class LiveController extends ChangeNotifier {
 
   void reconnect() => unawaited(_connect());
 
+  /// Test seam: feed frames that would normally arrive over the socket.
+  ///
+  /// The alert centre is driven entirely by this list, so the tests need a way
+  /// to deliver a batch without a server. Marked visible-for-testing so nothing
+  /// in the app reaches for it by accident.
+  @visibleForTesting
+  void ingestEvents(List<ApiEvent> events) => _remember(events);
+
   Future<void> _connect() async {
     if (!_enabled || _disposed) return;
     _teardown();

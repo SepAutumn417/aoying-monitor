@@ -293,10 +293,13 @@ class ApiClient {
     );
   }
 
-  Future<ApiEvent> publishTestEvent() async {
+  Future<ApiEvent> publishTestEvent({String? action}) async {
+    final path = action == null
+        ? '/api/events/test'
+        : '/api/events/test?action=${Uri.encodeQueryComponent(action)}';
     final body = await _send(
-      '/api/events/test',
-      () => _http.post(_uri('/api/events/test'), headers: _headers()),
+      path,
+      () => _http.post(_uri(path), headers: _headers()),
     );
     return ApiEvent.fromJson((body['event'] as Map).cast<String, dynamic>());
   }
