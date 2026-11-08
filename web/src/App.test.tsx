@@ -17,7 +17,7 @@ const session: ApiSession = {
     name: "测试浏览器",
     platform: "web",
     fingerprint: "web-browser",
-    app_version: "0.3.0",
+    app_version: "0.4.0",
     push_mode: "browser",
     created_at: new Date().toISOString(),
     last_seen_at: new Date().toISOString(),
@@ -56,7 +56,7 @@ beforeEach(() => {
             name: "测试浏览器",
             platform: "web",
             fingerprint: "web-browser",
-            app_version: "0.3.0",
+            app_version: "0.4.0",
             push_mode: "browser",
             created_at: new Date().toISOString(),
             last_seen_at: new Date(Date.now() - 120_000).toISOString(),
@@ -177,11 +177,17 @@ describe("App shell", () => {
     expect(screen.getAllByText(/尚未完成同步/).length).toBe(3);
   });
 
-  it("renders alerts", () => {
+  it("renders the signal centre and its sound legend", () => {
     renderAt("/alerts");
 
-    expect(screen.getByRole("heading", { name: "提醒" })).toBeInTheDocument();
-    expect(screen.getByText("OKX ETHUSDT 加仓")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "信号提醒" })).toBeInTheDocument();
+    // No socket traffic in jsdom, so the centre must explain itself rather than
+    // show placeholder trades.
+    expect(screen.getByText(/还没有收到信号/)).toBeInTheDocument();
+    expect(screen.getByText("声音对照")).toBeInTheDocument();
+    for (const label of ["新开仓", "加仓", "减仓", "平仓", "调杠杆"]) {
+      expect(screen.getByRole("button", { name: `试听${label}` })).toBeInTheDocument();
+    }
   });
 
   it("falls back to the dashboard for unknown routes", () => {

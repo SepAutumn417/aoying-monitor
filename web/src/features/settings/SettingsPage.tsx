@@ -1,9 +1,11 @@
-import { Loader2, RefreshCw, Send, ShieldOff, Smartphone } from "lucide-react";
+import { Loader2, Play, RefreshCw, Send, ShieldOff, Smartphone } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { PageHeader } from "../../components/ui/PageHeader";
 import { api, ApiError, type ApiDevice } from "../../lib/api";
 import { useLive } from "../../lib/live";
+import { ACTION_LABEL, SIGNAL_ACTIONS, type SignalAction } from "../../lib/signals";
+import { SOUND_LABEL } from "../../lib/sound";
 
 const thresholds = [
   { label: "最小仓位变化", unit: "%", value: "1" },
@@ -70,13 +72,15 @@ export function SettingsPage() {
     }
   }
 
-  async function sendTest() {
-    setBusy("test");
+  async function sendTest(action?: SignalAction) {
+    const key = action ? `test-${action}` : "test";
+    setBusy(key);
     setError(null);
     setNotice(null);
     try {
-      const result = await api.publishTestEvent();
-      setNotice(`已发送测试事件 #${result.event?.id ?? "?"}`);
+      const result = await api.publishTestEvent(action);
+      const label = action ? `「${ACTION_LABEL[action]}」信号` : "测试事件";
+      setNotice(`已发送${label} #${result.event?.id ?? "?"}，应听到「${action ? SOUND_LABEL[action] : "系统提示"}」`);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : "发送失败");
     } finally {
@@ -97,15 +101,16 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={() => void sendTest()}
-            disabled={busy === "test"}
-            className="flex items-center gap-1.5 rounded-lg border border-signal-400/30 bg-signal-400/10 px-2.5 py-1.5 text-[11px] font-medium text-signal-300 transition hover:bg-signal-400/15 disabled:opacity-60"
+            disabled={busy !== null}
+            title="发一条系统级测试事件，不触发信号提示音"
+            className="flex items-center gap-1.5 rounded-lg border border-mist-400/20 px-2.5 py-1.5 text-[11px] text-mist-300 transition hover:border-mist-400/40 hover:text-white disabled:opacity-60"
           >
             {busy === "test" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Send className="h-3.5 w-3.5" />
             )}
-            发送测试推送
+            系统通知
           </button>
         }
       />
@@ -210,6 +215,43 @@ export function SettingsPage() {
               </label>
             ))}
             <p className="pt-1 text-[10px] text-mist-400/70">阈值与通道将在采集接入后生效。</p>
+          </div>
+        </section>
+
+        <section className="panel rounded-xl">
+          <div className="border-b border-mist-400/10 px-4 py-3">
+            <h2 className="text-sm font-semibold text-white">提示音试听</h2>
+          </div>
+          <div className="space-y-3 px-4 py-4">
+            <p className="text-[11px] leading-relaxed text-mist-400">
+              每一种操作有自己的声音。下面五个按钮会让服务端真的发一条测试信号，
+              走和真实信号完全相同的路径——数据库事件、WebSocket、扬声器。
+              听到声音，才说明真信号也听得见。
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {SIGNAL_ACTIONS.map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => void sendTest(action)}
+                  disabled={busy !== null}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-mist-400/15 px-2.5 py-2 text-[11px] text-mist-200 transition hover:border-signal-400/40 hover:text-white disabled:opacity-60"
+                >
+                  <span className="flex items-center gap-1.5">
+                    {busy === `test-${action}` ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                    {ACTION_LABEL[action]}
+                  </span>
+                  <span className="font-mono text-[10px] text-mist-400">{SOUND_LABEL[action]}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-mist-400/70">
+              测试信号不会计入未读，也不会被当成真实成交。
+            </p>
           </div>
         </section>
 

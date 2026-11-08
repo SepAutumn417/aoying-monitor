@@ -1,6 +1,8 @@
 import {
   Activity,
   Bell,
+  BellOff,
+  BellRing,
   Database,
   LayoutDashboard,
   LogOut,
@@ -10,8 +12,10 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 
+import { useAlerts } from "../../lib/alerts";
 import { useAuth } from "../../lib/auth";
 import { useLive } from "../../lib/live";
+import { SignalToast } from "../../features/alerts/SignalToast";
 
 const navigation = [
   { to: "/", label: "总览", icon: LayoutDashboard, end: true },
@@ -22,7 +26,7 @@ const navigation = [
   { to: "/settings", label: "设置", icon: Settings },
 ];
 
-function NavItems({ compact = false }: { compact?: boolean }) {
+function NavItems({ compact = false, unread = 0 }: { compact?: boolean; unread?: number }) {
   return (
     <>
       {navigation.map(({ to, label, icon: Icon, end }) => (
@@ -42,6 +46,11 @@ function NavItems({ compact = false }: { compact?: boolean }) {
         >
           <Icon className="h-4 w-4 shrink-0" strokeWidth={1.8} />
           <span>{label}</span>
+          {to === "/alerts" && unread > 0 ? (
+            <span className="ml-auto min-w-4 rounded-full bg-signal-400/20 px-1 text-center font-mono text-[10px] leading-4 text-signal-300">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          ) : null}
         </NavLink>
       ))}
     </>
@@ -59,6 +68,7 @@ const socketLabel: Record<string, { text: string; tone: string }> = {
 export function AppLayout() {
   const { user, logout } = useAuth();
   const { status } = useLive();
+  const { unread, latest, muted, toggleMuted } = useAlerts();
   const socket = socketLabel[status] ?? socketLabel.idle;
   const initial = (user?.display_name ?? user?.username ?? "管").slice(0, 1).toUpperCase();
 
@@ -76,13 +86,21 @@ export function AppLayout() {
         </div>
 
         <nav className="mt-5 flex flex-1 flex-col gap-0.5">
-          <NavItems />
+          <NavItems unread={unread} />
         </nav>
 
         <div className="space-y-2 border-t border-mist-400/10 px-1.5 pt-3">
           <div className="flex items-center gap-1.5">
             <span className={`h-1.5 w-1.5 rounded-full ${socket.tone}`} />
             <span className="font-mono text-[10px] text-mist-400">{socket.text}</span>
+            <button
+              type="button"
+              onClick={toggleMuted}
+              title={muted ? "打开提示音" : "关闭提示音"}
+              className="ml-auto grid h-6 w-6 place-items-center rounded border border-mist-400/15 text-mist-400 transition hover:border-mist-400/30 hover:text-mist-200"
+            >
+              {muted ? <BellOff className="h-3 w-3" /> : <BellRing className="h-3 w-3" />}
+            </button>
           </div>
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
@@ -122,7 +140,7 @@ export function AppLayout() {
             </div>
           </div>
           <div className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden">
-            <NavItems compact />
+            <NavItems compact unread={unread} />
           </div>
         </header>
 
@@ -130,6 +148,8 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      <SignalToast latest={latest} muted={muted} />
     </div>
   );
 }

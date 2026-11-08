@@ -272,8 +272,9 @@ export const api = {
   ticket() {
     return request<ApiTicket>("/api/ws/ticket", { method: "POST" });
   },
-  publishTestEvent() {
-    return request<{ ok: boolean; event: ApiEvent }>("/api/events/test", { method: "POST" });
+  publishTestEvent(action?: string) {
+    const query = action ? `?action=${encodeURIComponent(action)}` : "";
+    return request<{ ok: boolean; event: ApiEvent }>(`/api/events/test${query}`, { method: "POST" });
   },
   telegramStatus() {
     return request<ApiTelegramStatus>("/api/telegram/status");

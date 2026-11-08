@@ -9,6 +9,7 @@ import { PositionsPage } from "./features/positions/PositionsPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { SourcesPage } from "./features/sources/SourcesPage";
 import { TimelinePage } from "./features/timeline/TimelinePage";
+import { AlertProvider } from "./lib/alerts";
 import { useAuth } from "./lib/auth";
 import { LiveProvider } from "./lib/live";
 
@@ -31,7 +32,9 @@ function RequireAuth() {
   }
   return (
     <LiveProvider>
-      <AppLayout />
+      <AlertProvider>
+        <AppLayout />
+      </AlertProvider>
     </LiveProvider>
   );
 }
