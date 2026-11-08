@@ -49,7 +49,7 @@ class Settings(BaseModel):
 
     app_env: str = os.getenv("APP_ENV", "dev")
     app_name: str = os.getenv("APP_NAME", "aoying-monitor")
-    app_version: str = "0.3.0"
+    app_version: str = "0.4.0"
 
     # Postgres in Docker; SQLite for a laptop run and for the test suite.
     # Relative SQLite URLs follow the process cwd; local services run from repo root.

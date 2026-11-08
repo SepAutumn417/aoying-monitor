@@ -47,7 +47,7 @@ function deviceDescriptor(): Partial<ApiDevice> {
     name: ua.includes("Edg") ? "Edge 浏览器" : ua.includes("Chrome") ? "Chrome 浏览器" : "浏览器",
     platform: "web",
     fingerprint: "web-browser",
-    app_version: "0.3.0",
+    app_version: "0.4.0",
     push_mode: "browser",
   };
 }
