@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
+import 'ledger_models.dart';
 
 class ApiException implements Exception {
   ApiException(this.statusCode, this.message);
@@ -18,7 +19,11 @@ class ApiException implements Exception {
 }
 
 class ApiUser {
-  const ApiUser({required this.id, required this.username, required this.displayName});
+  const ApiUser({
+    required this.id,
+    required this.username,
+    required this.displayName,
+  });
 
   final int id;
   final String username;
@@ -27,7 +32,8 @@ class ApiUser {
   factory ApiUser.fromJson(Map<String, dynamic> json) => ApiUser(
     id: json['id'] as int,
     username: json['username'] as String? ?? '',
-    displayName: json['display_name'] as String? ?? json['username'] as String? ?? '',
+    displayName:
+        json['display_name'] as String? ?? json['username'] as String? ?? '',
   );
 }
 
@@ -55,8 +61,10 @@ class ApiDevice {
     name: json['name'] as String? ?? '未命名设备',
     platform: json['platform'] as String? ?? 'unknown',
     pushMode: json['push_mode'] as String? ?? 'poll',
-    lastSeenAt: DateTime.tryParse(json['last_seen_at'] as String? ?? '')?.toLocal(),
-    revokedAt: DateTime.tryParse(json['revoked_at'] as String? ?? '')?.toLocal(),
+    lastSeenAt: DateTime.tryParse(json['last_seen_at'] as String? ?? '')
+        ?.toLocal(),
+    revokedAt: DateTime.tryParse(json['revoked_at'] as String? ?? '')
+        ?.toLocal(),
   );
 }
 
@@ -98,7 +106,8 @@ class ApiEvent {
     id: json['id'] as int,
     kind: json['kind'] as String? ?? 'unknown',
     payload: (json['payload'] as Map?)?.cast<String, dynamic>() ?? const {},
-    createdAt: DateTime.tryParse(json['created_at'] as String? ?? '')?.toLocal(),
+    createdAt: DateTime.tryParse(json['created_at'] as String? ?? '')
+        ?.toLocal(),
   );
 }
 
@@ -145,7 +154,10 @@ class ApiClient {
         ? <String, dynamic>{}
         : (jsonDecode(response.body) as Map).cast<String, dynamic>();
     if (response.statusCode >= 400) {
-      throw ApiException(response.statusCode, body['detail'] as String? ?? '请求失败');
+      throw ApiException(
+        response.statusCode,
+        body['detail'] as String? ?? '请求失败',
+      );
     }
     return body;
   }
@@ -209,18 +221,16 @@ class ApiClient {
   Future<ApiSession?> restore() async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getString(_refreshKey) == null) return null;
-    final body = await _send(
-      '/api/auth/refresh',
-      () async {
-        final token = (await SharedPreferences.getInstance()).getString(_refreshKey)!;
-        return _http.post(
-          _uri('/api/auth/refresh'),
-          headers: {'content-type': 'application/json'},
-          body: jsonEncode({'refresh_token': token}),
-        );
-      },
-      retry: false,
-    );
+    final body = await _send('/api/auth/refresh', () async {
+      final token = (await SharedPreferences.getInstance()).getString(
+        _refreshKey,
+      )!;
+      return _http.post(
+        _uri('/api/auth/refresh'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'refresh_token': token}),
+      );
+    }, retry: false);
     final session = _sessionFrom(body);
     await _store(session);
     return session;
@@ -249,7 +259,10 @@ class ApiClient {
   }
 
   Future<List<ApiDevice>> devices() async {
-    final list = await _sendList('/api/devices', () => _http.get(_uri('/api/devices'), headers: _headers()));
+    final list = await _sendList(
+      '/api/devices',
+      () => _http.get(_uri('/api/devices'), headers: _headers()),
+    );
     return list.map((item) => ApiDevice.fromJson(item)).toList();
   }
 
@@ -261,7 +274,10 @@ class ApiClient {
     if (response.statusCode == 401) {
       final token = await (_refreshing ??= _refreshAccessToken());
       if (token != null) {
-        return _sendList(path, () => _http.get(_uri(path), headers: _headers()));
+        return _sendList(
+          path,
+          () => _http.get(_uri(path), headers: _headers()),
+        );
       }
     }
     if (response.statusCode >= 400) {
@@ -290,6 +306,63 @@ class ApiClient {
     return ApiTicket(
       ticket: body['ticket'] as String,
       wsUrl: body['ws_url'] as String? ?? '',
+    );
+  }
+
+  Future<LedgerStatus> copyStatus() async {
+    const path = '/api/copy/status';
+    return LedgerStatus.fromJson(
+      await _send(path, () => _http.get(_uri(path), headers: _headers())),
+    );
+  }
+
+  Future<List<LedgerPosition>> positions({
+    String? status,
+    String? symbol,
+    int limit = 100,
+    bool includeEvents = true,
+  }) async {
+    final uri = _uri('/api/positions').replace(
+      queryParameters: {
+        'limit': '${limit.clamp(1, 100)}',
+        'include_events': '$includeEvents',
+        'status': ?status,
+        'symbol': ?symbol,
+      },
+    );
+    final body = await _send(
+      uri.path,
+      () => _http.get(uri, headers: _headers()),
+    );
+    return List.unmodifiable(
+      (body['positions'] as List).map(
+        (e) => LedgerPosition.fromJson((e as Map).cast<String, dynamic>()),
+      ),
+    );
+  }
+
+  Future<List<LedgerSignal>> signals({
+    int limit = 20,
+    int? beforeId,
+    String? kind,
+    String? symbol,
+  }) async {
+    final uri = _uri('/api/signals').replace(
+      queryParameters: {
+        'limit': '${limit.clamp(1, 500)}',
+        if (beforeId != null) 'before_id': '$beforeId',
+        'kind': ?kind,
+        'symbol': ?symbol,
+      },
+    );
+    final body = await _send(
+      uri.path,
+      () => _http.get(uri, headers: _headers()),
+    );
+    return List.unmodifiable(
+      (body['signals'] as List).map(
+        (e) => LedgerSignal.fromJson((e as Map).cast<String, dynamic>()),
+      ),
     );
   }
 

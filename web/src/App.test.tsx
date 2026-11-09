@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -49,6 +49,9 @@ beforeEach(() => {
     "fetch",
     vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      if (url.startsWith("/api/copy/status")) return json({ positions_open: 0, positions_closed: 0, realized_closed: 0, signals: 0, events: 0, last_signal_at: null });
+      if (url.startsWith("/api/positions")) return json({ positions: [], count: 0 });
+      if (url.startsWith("/api/signals")) return json({ signals: [], count: 0 });
       if (url.startsWith("/api/devices")) {
         return json([
           {
@@ -123,26 +126,27 @@ afterEach(() => {
 });
 
 describe("App shell", () => {
-  it("renders the dashboard with positions and changes", () => {
-    renderAt("/");
+  it("renders the dashboard with positions and signals", async () => {
+    await act(async () => { renderAt("/"); });
 
     expect(screen.getByText("监控总览")).toBeInTheDocument();
     expect(screen.getByText("当前持仓")).toBeInTheDocument();
-    expect(screen.getByText("仓位变化")).toBeInTheDocument();
-    expect(screen.getByText("最新发言")).toBeInTheDocument();
+    expect(screen.getByText("最近信号")).toBeInTheDocument();
+    expect(screen.getByText("最近已平仓")).toBeInTheDocument();
   });
 
-  it("labels demo data visibly", () => {
-    renderAt("/");
-    expect(screen.getAllByText("示例数据").length).toBeGreaterThan(0);
+  it("labels real ledger source without demo fallback", async () => {
+    await act(async () => { renderAt("/"); });
+    expect(screen.getByText(/Telegram 信号账本/)).toBeInTheDocument();
+    expect(screen.queryByText("示例数据")).not.toBeInTheDocument();
   });
 
-  it("renders positions with a venue filter", () => {
+  it("renders empty positions with status filters", async () => {
     renderAt("/positions");
-
     expect(screen.getByRole("heading", { name: "持仓" })).toBeInTheDocument();
-    expect(screen.getAllByText("BTCUSDT").length).toBeGreaterThan(0);
-    expect(screen.getByText("全部场所")).toBeInTheDocument();
+    expect(await screen.findByText("暂无仓位记录")).toBeInTheDocument();
+    expect(screen.queryByText("BTCUSDT")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "全部" })).toBeInTheDocument();
   });
 
   it("renders statements on the timeline", async () => {
@@ -177,8 +181,8 @@ describe("App shell", () => {
     expect(screen.getAllByText(/尚未完成同步/).length).toBe(3);
   });
 
-  it("renders the signal centre and its sound legend", () => {
-    renderAt("/alerts");
+  it("renders the signal centre and its sound legend", async () => {
+    await act(async () => { renderAt("/alerts"); });
 
     expect(screen.getByRole("heading", { name: "信号提醒" })).toBeInTheDocument();
     // No socket traffic in jsdom, so the centre must explain itself rather than
@@ -190,8 +194,8 @@ describe("App shell", () => {
     }
   });
 
-  it("falls back to the dashboard for unknown routes", () => {
-    renderAt("/does-not-exist");
+  it("falls back to the dashboard for unknown routes", async () => {
+    await act(async () => { renderAt("/does-not-exist"); });
 
     expect(screen.getByText("监控总览")).toBeInTheDocument();
   });

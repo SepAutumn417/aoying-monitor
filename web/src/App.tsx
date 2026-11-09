@@ -12,6 +12,7 @@ import { TimelinePage } from "./features/timeline/TimelinePage";
 import { AlertProvider } from "./lib/alerts";
 import { useAuth } from "./lib/auth";
 import { LiveProvider } from "./lib/live";
+import { LedgerProvider } from "./lib/ledger";
 
 function RequireAuth() {
   const { status } = useAuth();
@@ -33,7 +34,9 @@ function RequireAuth() {
   return (
     <LiveProvider>
       <AlertProvider>
-        <AppLayout />
+        <LedgerProvider>
+          <AppLayout />
+        </LedgerProvider>
       </AlertProvider>
     </LiveProvider>
   );

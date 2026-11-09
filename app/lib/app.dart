@@ -7,19 +7,27 @@ import 'alerts.dart';
 import 'app_scope.dart';
 import 'config.dart';
 import 'live.dart';
+import 'ledger.dart';
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
 import 'session.dart';
 import 'theme.dart';
 
 class AoyingApp extends StatefulWidget {
-  const AoyingApp({super.key, this.session, this.live, this.alerts});
+  const AoyingApp({
+    super.key,
+    this.session,
+    this.live,
+    this.alerts,
+    this.ledger,
+  });
 
   /// Test hooks: inject a ready-made session/live controller instead of hitting
   /// the network. All are optional so production wiring stays one line.
   final SessionController? session;
   final LiveController? live;
   final AlertController? alerts;
+  final LedgerController? ledger;
 
   @override
   State<AoyingApp> createState() => _AoyingAppState();
@@ -27,9 +35,13 @@ class AoyingApp extends StatefulWidget {
 
 class _AoyingAppState extends State<AoyingApp> {
   late final SessionController _session = widget.session ?? SessionController();
-  late final LiveController _live = widget.live ?? LiveController(api: _session.api);
+  late final LiveController _live =
+      widget.live ?? LiveController(api: _session.api);
   late final AlertController _alerts =
       widget.alerts ?? AlertController(live: _live);
+  late final LedgerController _ledger =
+      widget.ledger ??
+      LedgerController(api: _session.api, live: _live, session: _session);
 
   /// 调试用的直达栏目：
   /// - Android/测试：`--dart-define=START_AT=2`
@@ -50,8 +62,9 @@ class _AoyingAppState extends State<AoyingApp> {
 
   @override
   void dispose() {
+    if (widget.ledger == null) _ledger.dispose();
     if (widget.alerts == null) _alerts.dispose();
-    _live.dispose();
+    if (widget.live == null) _live.dispose();
     if (widget.session == null) _session.dispose();
     super.dispose();
   }
@@ -64,6 +77,7 @@ class _AoyingAppState extends State<AoyingApp> {
       session: _session,
       live: _live,
       alerts: _alerts,
+      ledger: _ledger,
       child: MaterialApp(
         title: '熬鹰资本 · 交易监控',
         debugShowCheckedModeBanner: false,

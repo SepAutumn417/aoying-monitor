@@ -132,6 +132,68 @@ export interface ApiTelegramMessage {
   revisions: ApiMessageRevision[];
 }
 
+export interface ApiCopyStatus {
+  positions_open: number;
+  positions_closed: number;
+  realized_closed: number;
+  signals: number;
+  events: number;
+  last_signal_at: string | null;
+}
+
+export interface ApiPositionEvent {
+  id: number;
+  kind: string;
+  at: string;
+  qty_before: number | null;
+  qty_after: number | null;
+  entry: number | null;
+  mark: number | null;
+  margin: number | null;
+  lev: number | null;
+  floating: number | null;
+  realized: number | null;
+}
+
+export interface ApiPosition {
+  id: number;
+  symbol: string;
+  side: string;
+  status: string;
+  opened_at: string;
+  closed_at: string | null;
+  entry: number | null;
+  qty_open: number | null;
+  qty_current: number | null;
+  lev: number | null;
+  margin: number | null;
+  realized: number;
+  held_seconds: number;
+  events: ApiPositionEvent[];
+}
+
+export interface ApiSignal {
+  id: number;
+  message_id: number;
+  kind: string;
+  action: string;
+  symbol: string;
+  side: string;
+  lev_target: number | null;
+  lev_actual: number | null;
+  qty: number | null;
+  qty_before: number | null;
+  qty_after: number | null;
+  entry: number | null;
+  mark: number | null;
+  margin: number | null;
+  liq: number | null;
+  floating: number | null;
+  realized: number | null;
+  posted_at: string;
+  reported_at: string | null;
+}
+
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 const REFRESH_KEY = "aoying.refresh_token";
 
@@ -243,6 +305,23 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
 }
 
 export const api = {
+  copyStatus() {
+    return request<ApiCopyStatus>("/api/copy/status");
+  },
+  positions(options: { status?: "open" | "closed"; symbol?: string; limit?: number; includeEvents?: boolean } = {}) {
+    const query = new URLSearchParams({ limit: String(options.limit ?? 100) });
+    if (options.status) query.set("status", options.status);
+    if (options.symbol) query.set("symbol", options.symbol);
+    if (options.includeEvents !== undefined) query.set("include_events", String(options.includeEvents));
+    return request<{ positions: ApiPosition[]; count: number }>(`/api/positions?${query}`);
+  },
+  signals(options: { beforeId?: number; kind?: string; symbol?: string; limit?: number } = {}) {
+    const query = new URLSearchParams({ limit: String(options.limit ?? 50) });
+    if (options.beforeId !== undefined) query.set("before_id", String(options.beforeId));
+    if (options.kind) query.set("kind", options.kind);
+    if (options.symbol) query.set("symbol", options.symbol);
+    return request<{ signals: ApiSignal[]; count: number }>(`/api/signals?${query}`);
+  },
   login(username: string, password: string, device: Partial<ApiDevice>) {
     return request<ApiSession>("/api/auth/login", {
       method: "POST",
