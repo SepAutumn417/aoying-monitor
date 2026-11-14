@@ -53,7 +53,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
             PageHeader(
               title: '信号提醒',
               meta: '${rows.length} 条',
-              action: _MuteButton(controller: controller),
+              action: controller.live.usesNativeMonitor
+                  ? null
+                  : _MuteButton(controller: controller),
             ),
             _FilterBar(
               value: _filter,
@@ -69,12 +71,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
               const SizedBox(height: 10),
             ],
             if (rows.isEmpty)
-              const SectionCard(
+              SectionCard(
                 padding: EdgeInsets.zero,
                 child: EmptyState(
                   icon: Icons.notifications_none,
                   title: '还没有收到信号',
-                  description: '熬鹰发出开仓、加仓、减仓、平仓或调杠杆时会出现在这里，并按动作播放不同的提示音。',
+                  description: controller.live.usesNativeMonitor
+                      ? '收到开仓、加仓、减仓、平仓或调杠杆信号时会显示在这里；后台通知能力请在设置中查看。'
+                      : '熬鹰发出开仓、加仓、减仓、平仓或调杠杆时会出现在这里，并按动作播放不同的提示音。',
                 ),
               )
             else
@@ -85,14 +89,24 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   children: [
                     for (var i = 0; i < rows.length; i++) ...[
                       if (i > 0)
-                        const Divider(height: 1, thickness: 1, color: AppColors.border),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: AppColors.border,
+                        ),
                       _AlertRow(alert: rows[i]),
                     ],
                   ],
                 ),
               ),
             const SizedBox(height: 12),
-            _SoundLegend(controller: controller),
+            if (controller.live.usesNativeMonitor)
+              const _Notice(
+                icon: Icons.notifications_outlined,
+                text: '通知声音由系统设置管理',
+              )
+            else
+              _SoundLegend(controller: controller),
             const SizedBox(height: 12),
             SectionCard(
               child: Column(
@@ -102,12 +116,22 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   const SizedBox(height: 10),
                   _ChannelRow(
                     name: 'Android App',
-                    detail: '主通道 · WebSocket 实时 + 本地声音',
+                    detail: controller.live.usesNativeMonitor
+                        ? '原生常驻监控 · 后台系统通知'
+                        : '主通道 · WebSocket 实时 + 本地声音',
                     state: _channelState(controller),
                     tone: _channelTone(controller),
                   ),
-                  const _ChannelRow(name: '企业微信', detail: '兜底 · 仅 critical', state: '待配置'),
-                  const _ChannelRow(name: '邮件', detail: '日报 / 严重告警', state: '待配置'),
+                  const _ChannelRow(
+                    name: '企业微信',
+                    detail: '兜底 · 仅 critical',
+                    state: '待配置',
+                  ),
+                  const _ChannelRow(
+                    name: '邮件',
+                    detail: '日报 / 严重告警',
+                    state: '待配置',
+                  ),
                 ],
               ),
             ),
@@ -150,7 +174,9 @@ class _MuteButton extends StatelessWidget {
       iconSize: 18,
       visualDensity: VisualDensity.compact,
       icon: Icon(
-        muted ? Icons.notifications_off_outlined : Icons.notifications_active_outlined,
+        muted
+            ? Icons.notifications_off_outlined
+            : Icons.notifications_active_outlined,
         color: muted ? AppColors.mist : AppColors.signal,
       ),
     );
@@ -158,7 +184,11 @@ class _MuteButton extends StatelessWidget {
 }
 
 class _FilterBar extends StatelessWidget {
-  const _FilterBar({required this.value, required this.counts, required this.onChanged});
+  const _FilterBar({
+    required this.value,
+    required this.counts,
+    required this.onChanged,
+  });
 
   final SignalAction? value;
   final Map<SignalAction, int> counts;
@@ -168,7 +198,8 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final options = <(String, SignalAction?, int)>[
       ('全部', null, counts.values.fold(0, (sum, count) => sum + count)),
-      for (final action in SignalAction.values) (actionLabel[action]!, action, counts[action] ?? 0),
+      for (final action in SignalAction.values)
+        (actionLabel[action]!, action, counts[action] ?? 0),
     ];
 
     return SizedBox(
@@ -239,7 +270,10 @@ class _AlertRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: tone.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(4),
@@ -247,7 +281,11 @@ class _AlertRow extends StatelessWidget {
                   ),
                   child: Text(
                     actionLabel[alert.action]!,
-                    style: TextStyle(color: tone, fontSize: 9, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: tone,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -265,7 +303,10 @@ class _AlertRow extends StatelessWidget {
                         alert.headline,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     if (alert.test) ...[
@@ -296,7 +337,9 @@ class _AlertRow extends StatelessWidget {
             Text(
               _signed(alert.realized!),
               style: TextStyle(
-                color: alert.realized! >= 0 ? AppColors.signal : AppColors.danger,
+                color: alert.realized! >= 0
+                    ? AppColors.signal
+                    : AppColors.danger,
                 fontSize: 11,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
@@ -352,7 +395,10 @@ class _SoundLegend extends StatelessWidget {
                 OutlinedButton(
                   onPressed: () => controller.preview(action),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     side: const BorderSide(color: AppColors.border),
@@ -360,16 +406,26 @@ class _SoundLegend extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.volume_up_outlined, size: 13, color: actionTone(action)),
+                      Icon(
+                        Icons.volume_up_outlined,
+                        size: 13,
+                        color: actionTone(action),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         actionLabel[action]!,
-                        style: TextStyle(color: actionTone(action), fontSize: 11),
+                        style: TextStyle(
+                          color: actionTone(action),
+                          fontSize: 11,
+                        ),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         soundLabel[action]!,
-                        style: const TextStyle(color: AppColors.mist, fontSize: 9),
+                        style: const TextStyle(
+                          color: AppColors.mist,
+                          fontSize: 9,
+                        ),
                       ),
                     ],
                   ),
@@ -405,7 +461,11 @@ class _Notice extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(color: AppColors.mistBright, fontSize: 11, height: 1.5),
+              style: const TextStyle(
+                color: AppColors.mistBright,
+                fontSize: 11,
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -437,9 +497,18 @@ class _ChannelRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(color: AppColors.mistBright, fontSize: 12)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: AppColors.mistBright,
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(detail, style: const TextStyle(color: AppColors.mist, fontSize: 10)),
+                Text(
+                  detail,
+                  style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                ),
               ],
             ),
           ),

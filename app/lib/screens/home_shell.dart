@@ -39,7 +39,6 @@ class _HomeShellState extends State<HomeShell> {
     final live = AppScope.liveOf(context);
     if (!identical(live, _live)) {
       _live = live;
-      live.start();
     }
     _alerts = AppScope.alertsOf(context);
   }
@@ -51,7 +50,11 @@ class _HomeShellState extends State<HomeShell> {
         titleSpacing: 16,
         title: const Row(
           children: [
-            Icon(Icons.monitor_heart_outlined, size: 18, color: AppColors.signal),
+            Icon(
+              Icons.monitor_heart_outlined,
+              size: 18,
+              color: AppColors.signal,
+            ),
             SizedBox(width: 8),
             Text('熬鹰监控'),
           ],
@@ -85,7 +88,10 @@ class _HomeShellState extends State<HomeShell> {
                         LiveStatus.offline => '未连接',
                         LiveStatus.idle => '待连接',
                       },
-                      style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                      style: const TextStyle(
+                        color: AppColors.mist,
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),

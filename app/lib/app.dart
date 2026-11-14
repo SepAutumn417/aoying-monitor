@@ -33,7 +33,7 @@ class AoyingApp extends StatefulWidget {
   State<AoyingApp> createState() => _AoyingAppState();
 }
 
-class _AoyingAppState extends State<AoyingApp> {
+class _AoyingAppState extends State<AoyingApp> with WidgetsBindingObserver {
   late final SessionController _session = widget.session ?? SessionController();
   late final LiveController _live =
       widget.live ?? LiveController(api: _session.api);
@@ -54,14 +54,65 @@ class _AoyingAppState extends State<AoyingApp> {
     return int.tryParse(Uri.base.queryParameters['tab'] ?? '');
   }
 
+  bool? _authenticated;
+  bool _visible = true;
+  int _sessionGeneration = 0;
+
+  Future<void> _syncMonitor() async {
+    if (!_live.usesNativeMonitor) return;
+    final generation = _sessionGeneration;
+    await _live.setVisible(_visible);
+    if (!mounted || generation != _sessionGeneration) return;
+    if (_session.isAuthenticated && _visible) {
+      await _live.startMonitor(requestPermission: false);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _visible = state == AppLifecycleState.resumed;
+    // Going to background changes notification visibility, not service lifetime.
+    unawaited(_syncMonitor());
+    if (_visible && _session.isAuthenticated) {
+      unawaited(_live.refreshMonitorStatus());
+    }
+  }
+
+  void _onSession() {
+    final authenticated = _session.isAuthenticated;
+    if (_authenticated == authenticated) return;
+    _authenticated = authenticated;
+    _sessionGeneration++;
+    // Disable before stop notifies listeners; enable only after old data clears.
+    _alerts.setEnabled(false);
+    _live.stop();
+    if (authenticated) {
+      _alerts.setEnabled(true);
+      _live.start();
+      unawaited(_syncMonitor());
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _visible =
+        (WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed) ==
+        AppLifecycleState.resumed;
+    _session.addListener(_onSession);
+    _onSession();
     if (widget.session == null) unawaited(_session.bootstrap());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _sessionGeneration++;
+    if (_live.usesNativeMonitor) unawaited(_live.setVisible(false));
+    _session.removeListener(_onSession);
+    _alerts.setEnabled(false);
+    _live.stop();
     if (widget.ledger == null) _ledger.dispose();
     if (widget.alerts == null) _alerts.dispose();
     if (widget.live == null) _live.dispose();

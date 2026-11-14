@@ -74,15 +74,16 @@ class SessionController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Silence session-scoped work immediately, even if revocation is slow.
+    _user = null;
+    _device = null;
+    _status = SessionStatus.anonymous;
+    notifyListeners();
     try {
       await api.logout();
     } catch (_) {
       // Local sign-out must succeed even when the network does not.
     }
-    _user = null;
-    _device = null;
-    _status = SessionStatus.anonymous;
-    notifyListeners();
   }
 
   void clearError() {

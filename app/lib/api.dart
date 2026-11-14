@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
 import 'ledger_models.dart';
+import 'monitor_bridge.dart';
 
 class ApiException implements Exception {
   ApiException(this.statusCode, this.message);
@@ -117,17 +118,40 @@ class ApiEvent {
 /// persisted so an app restart does not force another login. A 401 triggers
 /// exactly one refresh-and-retry, never a refresh storm.
 class ApiClient {
-  ApiClient({http.Client? httpClient, String? baseUrl})
+  ApiClient({http.Client? httpClient, String? baseUrl, MonitorBridge? monitor})
     : _http = httpClient ?? http.Client(),
+      monitor =
+          monitor ??
+          (!kIsWeb && Platform.isAndroid ? ChannelMonitorBridge() : null),
       baseUrl = baseUrl ?? AppConfig.apiBaseUrl;
 
   static const _refreshKey = 'aoying.refresh_token';
 
   final http.Client _http;
   final String baseUrl;
+  final MonitorBridge? monitor;
 
   String? _accessToken;
   Future<String?>? _refreshing;
+  int _epoch = 0;
+  Future<void> _storageTail = Future<void>.value();
+
+  void _requireEpoch(int epoch) {
+    if (epoch != _epoch) throw ApiException(401, '会话已变更，请重新登录');
+  }
+
+  // Serialize preference mutations: a late disk write can never finish after
+  // the clear/new-login write that supersedes it.
+  Future<T> _withPreferences<T>(Future<T> Function(SharedPreferences) action) {
+    final result = _storageTail.then(
+      (_) async => action(await SharedPreferences.getInstance()),
+    );
+    _storageTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
 
   String? get accessToken => _accessToken;
 
@@ -143,9 +167,13 @@ class ApiClient {
     Future<http.Response> Function() run, {
     bool retry = true,
   }) async {
+    final epoch = _epoch;
+    final expectedAccess = _accessToken;
     final response = await run();
+    _requireEpoch(epoch);
     if (response.statusCode == 401 && retry) {
-      final token = await (_refreshing ??= _refreshAccessToken());
+      final token = await _refreshFor(expectedAccess, epoch);
+      _requireEpoch(epoch);
       if (token != null) {
         return _send(path, run, retry: false);
       }
@@ -162,32 +190,57 @@ class ApiClient {
     return body;
   }
 
-  Future<String?> _refreshAccessToken() async {
+  Future<String?> _refreshFor(String? expectedAccess, int epoch) async {
+    _requireEpoch(epoch);
+    if (expectedAccess != _accessToken) return _accessToken;
+    if (_refreshing != null) return _refreshing;
+    final pending = _refreshAccessToken(expectedAccess, epoch);
+    _refreshing = pending;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_refreshKey);
-      if (token == null) return null;
-      final body = await _send(
-        '/api/auth/refresh',
-        () => _http.post(
-          _uri('/api/auth/refresh'),
-          headers: {'content-type': 'application/json'},
-          body: jsonEncode({'refresh_token': token}),
-        ),
-        retry: false,
-      );
-      final session = _sessionFrom(body);
-      await _store(session);
-      return session.accessToken;
+      return await pending;
     } finally {
-      _refreshing = null;
+      if (identical(_refreshing, pending)) _refreshing = null;
     }
   }
 
-  Future<void> _store(ApiSession session) async {
+  Future<String?> _refreshAccessToken(String? expectedAccess, int epoch) async {
+    if (monitor != null) {
+      final body = await monitor!.invoke('auth.refresh', {
+        'expectedAccess': expectedAccess,
+      });
+      _requireEpoch(epoch);
+      if (body == null) return null;
+      final session = _sessionFrom((body as Map).cast<String, dynamic>());
+      _accessToken = session.accessToken;
+      return session.accessToken;
+    }
+    final token = await _withPreferences(
+      (prefs) async => prefs.getString(_refreshKey),
+    );
+    _requireEpoch(epoch);
+    if (token == null) return null;
+    final body = await _send(
+      '/api/auth/refresh',
+      () => _http.post(
+        _uri('/api/auth/refresh'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'refresh_token': token}),
+      ),
+      retry: false,
+    );
+    _requireEpoch(epoch);
+    final session = _sessionFrom(body);
+    await _store(session, epoch);
+    return session.accessToken;
+  }
+
+  Future<void> _store(ApiSession session, int epoch) async {
+    await _withPreferences((prefs) async {
+      _requireEpoch(epoch);
+      await prefs.setString(_refreshKey, session.refreshToken);
+    });
+    _requireEpoch(epoch);
     _accessToken = session.accessToken;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_refreshKey, session.refreshToken);
   }
 
   ApiSession _sessionFrom(Map<String, dynamic> body) => ApiSession(
@@ -198,6 +251,26 @@ class ApiClient {
   );
 
   Future<ApiSession> login(String username, String password) async {
+    final epoch = ++_epoch;
+    _refreshing = null;
+    _accessToken = null;
+    if (monitor != null) {
+      final body = await monitor!.invoke('auth.login', {
+        'baseUrl': baseUrl,
+        'username': username,
+        'password': password,
+        'device': _deviceDescriptor(),
+      });
+      _requireEpoch(epoch);
+      final session = _sessionFrom((body as Map).cast<String, dynamic>());
+      await _withPreferences((prefs) async {
+        _requireEpoch(epoch);
+        await prefs.remove(_refreshKey);
+      });
+      _requireEpoch(epoch);
+      _accessToken = session.accessToken;
+      return session;
+    }
     final body = await _send(
       '/api/auth/login',
       () => _http.post(
@@ -212,40 +285,76 @@ class ApiClient {
       retry: false,
     );
     final session = _sessionFrom(body);
-    await _store(session);
+    await _store(session, epoch);
     return session;
   }
 
   /// Exchanges a stored refresh token for a fresh session, or returns null when
   /// there is nothing to restore.
   Future<ApiSession?> restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getString(_refreshKey) == null) return null;
-    final body = await _send('/api/auth/refresh', () async {
-      final token = (await SharedPreferences.getInstance()).getString(
-        _refreshKey,
-      )!;
-      return _http.post(
+    final epoch = ++_epoch;
+    _refreshing = null;
+    final legacy = await _withPreferences(
+      (prefs) async => prefs.getString(_refreshKey),
+    );
+    _requireEpoch(epoch);
+    if (monitor != null) {
+      final body = await monitor!.invoke('auth.restore', {
+        'baseUrl': baseUrl,
+        'legacyRefresh': ?legacy,
+      });
+      _requireEpoch(epoch);
+      if (body == null) return null;
+      final session = _sessionFrom((body as Map).cast<String, dynamic>());
+      // Native only returns after the encrypted migration is durable.
+      await _withPreferences((prefs) async {
+        _requireEpoch(epoch);
+        await prefs.remove(_refreshKey);
+      });
+      _requireEpoch(epoch);
+      _accessToken = session.accessToken;
+      return session;
+    }
+    if (legacy == null) return null;
+    final body = await _send(
+      '/api/auth/refresh',
+      () => _http.post(
         _uri('/api/auth/refresh'),
         headers: {'content-type': 'application/json'},
-        body: jsonEncode({'refresh_token': token}),
-      );
-    }, retry: false);
+        body: jsonEncode({'refresh_token': legacy}),
+      ),
+      retry: false,
+    );
     final session = _sessionFrom(body);
-    await _store(session);
+    await _store(session, epoch);
     return session;
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_refreshKey);
+    ++_epoch;
+    _refreshing = null;
+    final headers = _headers();
+    _accessToken = null;
+    // Queue the clear before any subsequent login can queue its durable store.
+    final clearing = _withPreferences((prefs) async {
+      final token = prefs.getString(_refreshKey);
+      await prefs.remove(_refreshKey);
+      return token;
+    });
+    if (monitor != null) {
+      // Native logout invalidates auth and stops its service internally. Sending
+      // monitor.stop here would persist the user's explicit stop preference.
+      await Future.wait<dynamic>([monitor!.invoke('auth.logout'), clearing]);
+      return;
+    }
+    final token = await clearing;
     if (token != null) {
       try {
         await _send(
           '/api/auth/logout',
           () => _http.post(
             _uri('/api/auth/logout'),
-            headers: {'content-type': 'application/json'},
+            headers: headers,
             body: jsonEncode({'refresh_token': token}),
           ),
           retry: false,
@@ -254,8 +363,6 @@ class ApiClient {
         // Already revoked server-side; clearing locally is enough.
       }
     }
-    _accessToken = null;
-    await prefs.remove(_refreshKey);
   }
 
   Future<List<ApiDevice>> devices() async {
@@ -268,16 +375,18 @@ class ApiClient {
 
   Future<List<Map<String, dynamic>>> _sendList(
     String path,
-    Future<http.Response> Function() run,
-  ) async {
+    Future<http.Response> Function() run, {
+    bool retry = true,
+  }) async {
+    final epoch = _epoch;
+    final expectedAccess = _accessToken;
     final response = await run();
-    if (response.statusCode == 401) {
-      final token = await (_refreshing ??= _refreshAccessToken());
+    _requireEpoch(epoch);
+    if (response.statusCode == 401 && retry) {
+      final token = await _refreshFor(expectedAccess, epoch);
+      _requireEpoch(epoch);
       if (token != null) {
-        return _sendList(
-          path,
-          () => _http.get(_uri(path), headers: _headers()),
-        );
+        return _sendList(path, run, retry: false);
       }
     }
     if (response.statusCode >= 400) {

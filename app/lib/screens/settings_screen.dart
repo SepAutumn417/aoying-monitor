@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../app_scope.dart';
 import '../config.dart';
+import '../live.dart';
+import '../monitor_bridge.dart';
 import '../signals.dart';
 import '../sound.dart';
 import '../theme.dart';
@@ -29,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<ApiDevice>? _devices;
   String? _error;
   bool _busy = false;
+  bool _monitorBusy = false;
 
   @override
   void didChangeDependencies() {
@@ -71,9 +74,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final event = await _api.publishTestEvent(action: action?.name);
       if (!mounted) return;
       final label = action == null ? '测试事件' : '「${actionLabel[action]}」信号';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已发送$label #${event.id}')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('已发送$label #${event.id}')));
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } finally {
@@ -81,9 +83,120 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _monitorAction(Future<void> Function() action) async {
+    setState(() => _monitorBusy = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) setState(() => _monitorBusy = false);
+    }
+  }
+
+  Widget _monitorSection(LiveController live) => AnimatedBuilder(
+    animation: live,
+    builder: (context, _) {
+      final status = live.monitorStatus;
+      String capability(bool? value, String yes, String no) =>
+          value == null ? '未知' : (value ? yes : no);
+      final connection = switch (status.connection) {
+        'connected' || 'live' => '已连接',
+        'connecting' => '连接中',
+        'retrying' || 'reconnecting' => '重连中',
+        'idle' || 'stopped' || 'offline' => '未连接',
+        _ => '未知',
+      };
+      return SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              status.enabled == true
+                  ? '后台监控已开启'
+                  : (status.enabled == false ? '后台提醒未启用' : '后台提醒状态未知'),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '通知权限：${capability(status.notificationPermission, '已授权', '未授权')}',
+            ),
+            Text(
+              '系统通知：${capability(status.notificationsEnabled, '允许', '已关闭')}',
+            ),
+            Text('常驻服务：${capability(status.enabled, '已开启', '未开启')}'),
+            Text('连接状态：$connection'),
+            Text(
+              '电池策略：${capability(status.batteryUnrestricted, '不受限制', '受限制')}',
+            ),
+            if (status.reason.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _monitorReason(status),
+                  style: const TextStyle(color: AppColors.mist, fontSize: 12),
+                ),
+              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: _monitorBusy
+                      ? null
+                      : () => _monitorAction(
+                          () => live.startMonitor(requestPermission: true),
+                        ),
+                  child: const Text('开启后台提醒'),
+                ),
+                OutlinedButton(
+                  onPressed: _monitorBusy
+                      ? null
+                      : () => _monitorAction(live.stopMonitor),
+                  child: const Text('停止后台提醒'),
+                ),
+                TextButton(
+                  onPressed: _monitorBusy
+                      ? null
+                      : () => _monitorAction(live.refreshMonitorStatus),
+                  child: const Text('刷新状态'),
+                ),
+                TextButton(
+                  onPressed: _monitorBusy
+                      ? null
+                      : () => _monitorAction(live.openBatterySettings),
+                  child: const Text('电池设置'),
+                ),
+              ],
+            ),
+            const Text(
+              '开启后显示常驻通知。前台由应用展示信号，后台／锁屏使用系统通知。'
+              '强制停止、系统电池限制或网络异常可能阻止送达；电池设置需自行确认，不保证绝对保活。',
+              style: TextStyle(
+                color: AppColors.mist,
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  String _monitorReason(MonitorStatus status) => switch (status.reason) {
+    'notification_permission_denied' => '通知权限未获准，请点击开启并在系统设置中允许通知。',
+    'notifications_disabled' => '系统已关闭通知，请在系统设置中允许通知。',
+    'bridge_unavailable' => '无法读取原生监控状态，未确认后台提醒已启用。',
+    'unknown' => '正在读取原生状态，尚未确认后台提醒能力。',
+    'logged_out' || 'no_session' || 'unauthenticated' => '请先登录后再开启后台提醒。',
+    _ => '原生状态：${status.reason}',
+  };
+
   @override
   Widget build(BuildContext context) {
     final session = AppScope.sessionOf(context);
+    final live = AppScope.liveOf(context);
+    final native = live.usesNativeMonitor;
     final devices = _devices;
 
     return ListView(
@@ -94,9 +207,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           meta: 'v${AppConfig.appVersion}',
           action: TextButton(
             onPressed: _busy ? null : () => _sendTest(),
-            child: const Text('系统通知', style: TextStyle(fontSize: 11)),
+            child: const Text('发送测试事件', style: TextStyle(fontSize: 11)),
           ),
         ),
+        if (native) ...[_monitorSection(live), const SizedBox(height: 12)],
         if (_error != null) ...[
           Container(
             width: double.infinity,
@@ -104,9 +218,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: BoxDecoration(
               color: AppColors.danger.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.danger.withValues(alpha: 0.30)),
+              border: Border.all(
+                color: AppColors.danger.withValues(alpha: 0.30),
+              ),
             ),
-            child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 11)),
+            child: Text(
+              _error!,
+              style: const TextStyle(color: AppColors.danger, fontSize: 11),
+            ),
           ),
           const SizedBox(height: 12),
         ],
@@ -122,7 +241,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Row(
                   children: [
-                    Text('已登录设备', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      '已登录设备',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const Spacer(),
                     IconButton(
                       onPressed: _loadDevices,
@@ -136,17 +258,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (devices == null)
                 const Padding(
                   padding: EdgeInsets.all(16),
-                  child: Text('加载中', style: TextStyle(color: AppColors.mist, fontSize: 11)),
+                  child: Text(
+                    '加载中',
+                    style: TextStyle(color: AppColors.mist, fontSize: 11),
+                  ),
                 )
               else if (devices.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16),
-                  child: Text('暂无设备', style: TextStyle(color: AppColors.mist, fontSize: 11)),
+                  child: Text(
+                    '暂无设备',
+                    style: TextStyle(color: AppColors.mist, fontSize: 11),
+                  ),
                 )
               else
                 for (final device in devices)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     child: Row(
                       children: [
                         Expanded(
@@ -155,13 +286,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             children: [
                               Text(
                                 device.name,
-                                style: const TextStyle(color: Colors.white, fontSize: 12),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 '${device.platform} · ${device.pushMode} · '
                                 '${_seenLabel(device.lastSeenAt)}',
-                                style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                                style: const TextStyle(
+                                  color: AppColors.mist,
+                                  fontSize: 10,
+                                ),
                               ),
                             ],
                           ),
@@ -169,7 +306,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (device.isActive)
                           TextButton(
                             onPressed: _busy ? null : () => _revoke(device),
-                            child: const Text('断开', style: TextStyle(fontSize: 11)),
+                            child: const Text(
+                              '断开',
+                              style: TextStyle(fontSize: 11),
+                            ),
                           )
                         else
                           const StatusChip(label: '已断开'),
@@ -194,13 +334,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Text('数据源', style: Theme.of(context).textTheme.titleMedium),
                     const Spacer(),
-                    const Text('5 个来源', style: TextStyle(color: AppColors.mist, fontSize: 10)),
+                    const Text(
+                      '5 个来源',
+                      style: TextStyle(color: AppColors.mist, fontSize: 10),
+                    ),
                   ],
                 ),
               ),
               for (final (name, detail) in _sources)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -209,12 +355,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           children: [
                             Text(
                               name,
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               detail,
-                              style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                              style: const TextStyle(
+                                color: AppColors.mist,
+                                fontSize: 10,
+                              ),
                             ),
                           ],
                         ),
@@ -237,14 +389,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 decoration: const BoxDecoration(
                   border: Border(bottom: BorderSide(color: AppColors.border)),
                 ),
-                child: Text('提示音试听', style: Theme.of(context).textTheme.titleMedium),
-              ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(12, 10, 12, 6),
                 child: Text(
-                  '每种操作有自己的声音。下面的按钮让服务端真的发一条测试信号，'
-                  '走和真实信号完全相同的路径——数据库事件、WebSocket、扬声器。',
-                  style: TextStyle(color: AppColors.mist, fontSize: 10, height: 1.5),
+                  native ? '通知测试' : '提示音试听',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                child: Text(
+                  native
+                      ? '按钮让服务端发出明确标注的测试信号。Android 由原生监控负责通知；前台不播放 Dart 提示音，后台通知是否送达仍需实际验证。'
+                      : '每种操作有自己的声音。下面的按钮让服务端真的发一条测试信号，'
+                            '走和真实信号完全相同的路径——数据库事件、WebSocket、扬声器。',
+                  style: const TextStyle(
+                    color: AppColors.mist,
+                    fontSize: 10,
+                    height: 1.5,
+                  ),
                 ),
               ),
               Padding(
@@ -255,14 +416,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     for (final action in SignalAction.values)
                       OutlinedButton(
-                        onPressed: _busy ? null : () => _sendTest(action: action),
+                        onPressed: _busy
+                            ? null
+                            : () => _sendTest(action: action),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(actionLabel[action]!, style: const TextStyle(fontSize: 11)),
+                            Text(
+                              actionLabel[action]!,
+                              style: const TextStyle(fontSize: 11),
+                            ),
                             Text(
                               soundLabel[action]!,
-                              style: const TextStyle(color: AppColors.mist, fontSize: 9),
+                              style: const TextStyle(
+                                color: AppColors.mist,
+                                fontSize: 9,
+                              ),
                             ),
                           ],
                         ),
@@ -313,7 +482,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 2),
                     Text(
                       session.user?.username ?? '',
-                      style: const TextStyle(color: AppColors.mist, fontSize: 10),
+                      style: const TextStyle(
+                        color: AppColors.mist,
+                        fontSize: 10,
+                      ),
                     ),
                   ],
                 ),
@@ -363,7 +535,10 @@ class _SettingField extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: const TextStyle(color: AppColors.mist, fontSize: 11)),
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.mist, fontSize: 11),
+            ),
           ),
           Container(
             width: 92,

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'api.dart';
+import 'monitor_bridge.dart';
 
 enum LiveStatus { idle, connecting, live, retrying, offline }
 
@@ -32,29 +33,129 @@ class LiveController extends ChangeNotifier {
   int _attempt = 0;
   bool _enabled = false;
   bool _disposed = false;
+  bool _stopped = false;
+  int _generation = 0;
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
   Timer? _ping;
   Timer? _retry;
 
+  bool get usesNativeMonitor => api.monitor != null;
+  int _monitorRevision = 0;
+  MonitorStatus _monitorStatus = const MonitorStatus();
+  MonitorStatus get monitorStatus => _monitorStatus;
+
   LiveStatus get status => _status;
   List<ApiEvent> get events => List.unmodifiable(_events);
   int get lastEventId => _lastEventId;
 
   void start() {
-    if (!autoConnect) return;
+    if (_disposed || _enabled) return;
+    _stopped = false;
     _enabled = true;
-    unawaited(_connect());
+    if (usesNativeMonitor) {
+      _subscription = api.monitor!.events.listen(
+        _onNativeFrame,
+        onError: (_) => _nativeUnavailable(),
+        onDone: _nativeUnavailable,
+      );
+      unawaited(refreshMonitorStatus());
+      return;
+    }
+    if (autoConnect) unawaited(_connect());
   }
 
   void stop() {
     _enabled = false;
+    _stopped = true;
+    _generation++;
+    _monitorRevision++;
+    _monitorStatus = const MonitorStatus();
     _teardown();
+    _events.clear();
+    _lastEventId = 0;
+    _attempt = 0;
     _setStatus(LiveStatus.idle);
   }
 
-  void reconnect() => unawaited(_connect());
+  void reconnect() => usesNativeMonitor
+      ? unawaited(refreshMonitorStatus())
+      : unawaited(_connect());
+
+  Future<void> refreshMonitorStatus() => _monitorCommand('monitor.status');
+
+  Future<void> startMonitor({required bool requestPermission}) =>
+      _monitorCommand('monitor.start', {
+        'requestPermission': requestPermission,
+      });
+
+  Future<void> stopMonitor() => _monitorCommand('monitor.stop');
+
+  Future<void> setVisible(bool visible) =>
+      _monitorCommand('monitor.visibility', {'visible': visible});
+
+  Future<void> openBatterySettings() =>
+      _monitorCommand('monitor.batterySettings');
+
+  Future<void> _monitorCommand(
+    String method, [
+    Map<String, dynamic>? arguments,
+  ]) async {
+    if (!usesNativeMonitor || _disposed) return;
+    final generation = _generation;
+    final revision = ++_monitorRevision;
+    try {
+      final result = await api.monitor!.invoke(method, arguments);
+      if (_disposed ||
+          generation != _generation ||
+          revision != _monitorRevision) {
+        return;
+      }
+      if (result is Map) _adoptMonitorStatus(result.cast<String, dynamic>());
+    } catch (_) {
+      if (!_disposed &&
+          generation == _generation &&
+          revision == _monitorRevision) {
+        _nativeUnavailable();
+      }
+    }
+  }
+
+  void _nativeUnavailable() {
+    if (_disposed || !_enabled) return;
+    _monitorStatus = const MonitorStatus(reason: 'bridge_unavailable');
+    _setStatus(LiveStatus.offline);
+    notifyListeners();
+  }
+
+  void _adoptMonitorStatus(Map<String, dynamic> json) {
+    _monitorStatus = MonitorStatus.fromJson(json);
+    _setStatus(switch (_monitorStatus.connection) {
+      'live' || 'connected' => LiveStatus.live,
+      'connecting' => LiveStatus.connecting,
+      'retrying' || 'reconnecting' => LiveStatus.retrying,
+      'idle' || 'stopped' => LiveStatus.idle,
+      _ => LiveStatus.offline,
+    });
+    notifyListeners();
+  }
+
+  void _onNativeFrame(Map<String, dynamic> frame) {
+    if (!_enabled || _disposed) return;
+    try {
+      if (frame['type'] == 'status' && frame['status'] is Map) {
+        _monitorRevision++;
+        _adoptMonitorStatus((frame['status'] as Map).cast<String, dynamic>());
+      } else if (frame['type'] == 'event' && frame['event'] is Map) {
+        _remember([
+          ApiEvent.fromJson((frame['event'] as Map).cast<String, dynamic>()),
+        ]);
+      }
+    } catch (_) {
+      // A malformed bridge frame cannot start a second transport or play sound.
+    }
+  }
 
   /// Test seam: feed frames that would normally arrive over the socket.
   ///
@@ -72,14 +173,27 @@ class LiveController extends ChangeNotifier {
       return;
     }
     _setStatus(LiveStatus.connecting);
+    final generation = ++_generation;
+    WebSocketChannel? pendingChannel;
+    bool isCurrent() => _enabled && !_disposed && generation == _generation;
     try {
       final ticket = await api.wsTicket();
-      final channel = WebSocketChannel.connect(Uri.parse(api.socketUrl(ticket)));
+      if (!isCurrent()) return;
+      final channel = WebSocketChannel.connect(
+        Uri.parse(api.socketUrl(ticket)),
+      );
+      pendingChannel = channel;
       await channel.ready;
+      if (!isCurrent()) {
+        unawaited(channel.sink.close());
+        return;
+      }
       _channel = channel;
       _attempt = 0;
       _setStatus(LiveStatus.live);
-      channel.sink.add(jsonEncode({'type': 'hello', 'last_event_id': _lastEventId}));
+      channel.sink.add(
+        jsonEncode({'type': 'hello', 'last_event_id': _lastEventId}),
+      );
       _ping?.cancel();
       _ping = Timer.periodic(_pingInterval, (_) {
         if (_channel != null) _channel!.sink.add(jsonEncode({'type': 'ping'}));
@@ -91,11 +205,13 @@ class LiveController extends ChangeNotifier {
         cancelOnError: true,
       );
     } catch (_) {
-      _scheduleRetry();
+      unawaited(pendingChannel?.sink.close());
+      if (isCurrent()) _scheduleRetry();
     }
   }
 
   void _onFrame(dynamic raw) {
+    if (!_enabled || _disposed) return;
     Map<String, dynamic> frame;
     try {
       frame = (jsonDecode(raw as String) as Map).cast<String, dynamic>();
@@ -108,11 +224,16 @@ class LiveController extends ChangeNotifier {
         if (_lastEventId == 0) _lastEventId = latest > 0 ? latest - 1 : 0;
         break;
       case 'event':
-        _remember([ApiEvent.fromJson((frame['event'] as Map).cast<String, dynamic>())]);
+        _remember([
+          ApiEvent.fromJson((frame['event'] as Map).cast<String, dynamic>()),
+        ]);
         break;
       case 'replay':
         final events = (frame['events'] as List? ?? const [])
-            .map((item) => ApiEvent.fromJson((item as Map).cast<String, dynamic>()))
+            .map(
+              (item) =>
+                  ApiEvent.fromJson((item as Map).cast<String, dynamic>()),
+            )
             .toList();
         _remember(events);
         break;
@@ -122,14 +243,16 @@ class LiveController extends ChangeNotifier {
   }
 
   void _remember(List<ApiEvent> incoming) {
-    if (incoming.isEmpty) return;
+    if (_disposed || _stopped || incoming.isEmpty) return;
     for (final event in incoming) {
       if (event.id > _lastEventId) _lastEventId = event.id;
     }
     final seen = _events.map((event) => event.id).toSet();
     _events.addAll(incoming.where((event) => !seen.contains(event.id)));
     _events.sort((a, b) => b.id.compareTo(a.id));
-    if (_events.length > _maxEvents) _events.removeRange(_maxEvents, _events.length);
+    if (_events.length > _maxEvents) {
+      _events.removeRange(_maxEvents, _events.length);
+    }
     notifyListeners();
   }
 
