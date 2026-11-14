@@ -1,5 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <application
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:label="aoying_monitor"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
@@ -25,6 +31,17 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- User-enabled, long-lived real-time signal monitoring is not short-term dataSync.
+             specialUse requires future distribution/store policy review; no boot receiver. -->
+        <service
+            android:name=".monitor.BackgroundMonitorService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled continuous real-time trading signal monitoring over authenticated WSS, with an ongoing status notification and explicit stop; no trading execution. Delivery remains subject to Doze, network and OEM restrictions." />
+        </service>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
