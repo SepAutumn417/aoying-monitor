@@ -68,3 +68,8 @@ backups/
 # 仓库备份与临时配置
 /.repo-backups/
 /.ghconfig/
+
+# --- local scratch (never committed) ---
+.tmp-*.txt
+backend/.preview/
+web/tw-test.mjs
