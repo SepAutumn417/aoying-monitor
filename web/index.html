@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#070b10" />
     <title>熬鹰监控 · AOYING MONITOR</title>
+    <script>
+      // Apply the saved theme before first paint so a light-theme reload never
+      // flashes the dark surface (AppLayout keeps it in sync afterwards).
+      (function () {
+        var theme = "dark";
+        try {
+          var saved = localStorage.getItem("aoying-theme");
+          if (saved === "light" || saved === "dark") theme = saved;
+        } catch (e) {}
+        var root = document.documentElement;
+        root.dataset.theme = theme;
+        root.style.colorScheme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", theme === "light" ? "#f3f5f7" : "#070b10");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

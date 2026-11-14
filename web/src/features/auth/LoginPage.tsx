@@ -35,7 +35,7 @@ export function LoginPage() {
             <Activity className="h-5 w-5 text-signal-300" />
           </div>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-mist-400">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-mist-400">
               AOYING MONITOR
             </p>
             <p className="text-sm font-semibold text-white">只读监控台</p>
@@ -86,7 +86,7 @@ export function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-mist-400/60">
+        <p className="mt-4 text-center font-mono text-xs uppercase tracking-[0.14em] text-mist-400/60">
           READ-ONLY · NO TRADING
         </p>
       </div>

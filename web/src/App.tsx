@@ -9,6 +9,7 @@ import { PositionsPage } from "./features/positions/PositionsPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { SourcesPage } from "./features/sources/SourcesPage";
 import { TimelinePage } from "./features/timeline/TimelinePage";
+import { WorkspacePage } from "./features/workspace/WorkspacePage";
 import { AlertProvider } from "./lib/alerts";
 import { useAuth } from "./lib/auth";
 import { LiveProvider } from "./lib/live";
@@ -58,6 +59,7 @@ export default function App() {
       <Route path="/login" element={<LoginRoute />} />
       <Route element={<RequireAuth />}>
         <Route index element={<DashboardPage />} />
+        <Route path="workspace" element={<WorkspacePage />} />
         <Route path="timeline" element={<TimelinePage />} />
         <Route path="positions" element={<PositionsPage />} />
         <Route path="alerts" element={<AlertsPage />} />

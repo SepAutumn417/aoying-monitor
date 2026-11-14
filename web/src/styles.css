@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./styles/home.css";
+@import "./styles/web.css";
 
 @theme {
   --color-ink-950: #070b10;
@@ -7,6 +9,7 @@
   --color-ink-700: #1a2733;
   --color-mist-400: #7f93a6;
   --color-mist-200: #c6d2dd;
+  --color-mist-300: #9fb0bf;
   --color-signal-400: #38e0a1;
   --color-signal-300: #6bf0bd;
   --color-amber-signal: #f4b860;
@@ -16,10 +19,85 @@
 }
 
 :root {
+  --font: "Inter", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Microsoft YaHei", system-ui, sans-serif;
+  --on-primary: #fff;
+  --bg: #111a22;
+  --surface: #19242e;
+  --text: #e6edf3;
+  --muted: #a2b1bf;
+  --line: #30404e;
+  --primary: #7bc4f4;
+  --primary-soft: #233d51;
+  --chat-bg: #111d27;
+  --positive: #75d3b6;
+  --negative: #f29ba4;
+  --font-xs: 12px;
+  --font-sm: 14px;
+  --font-md: 16px;
+  --font-lg: 20px;
+  --font-xl: 24px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   color-scheme: dark;
   font-family: var(--font-sans);
   background: var(--color-ink-950);
   color: var(--color-mist-200);
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f5f7;
+  --surface: #fff;
+  --text: #17212b;
+  --muted: #596a77;
+  --line: #e4e9ee;
+  --primary: #176fa8;
+  --primary-soft: #eaf4fc;
+  --chat-bg: #e7eef2;
+  --positive: #13765d;
+  --negative: #b33e47;
+  --on-primary: #fff;
+  color-scheme: light;
+  background: var(--bg);
+  color: var(--text);
+
+  /* Rebind Tailwind semantic colors so components whose classes are hard-coded
+     for the dark surface (text-white / bg-ink-950 / bg-white/[0.08] / bg-black/20)
+     flip together with the theme. Unlayered rules outrank Tailwind's @layer theme. */
+  --color-white: #17212b;
+  --color-black: #9fb0bd;
+  --color-ink-950: #f3f5f7;
+  --color-ink-900: #ffffff;
+  --color-ink-800: #eef1f4;
+  --color-ink-700: #e4e9ee;
+  --color-mist-200: #1f2a33;
+  --color-mist-300: #3d4a54;
+  --color-mist-400: #4d5b67;
+  --color-signal-400: #0b7d5d;
+  --color-signal-300: #0a6e52;
+  --color-amber-signal: #8a5f0d;
+  --color-danger: #a8303f;
+}
+
+:root[data-theme="dark"] {
+  --bg: #111a22;
+  --surface: #19242e;
+  --text: #e6edf3;
+  --muted: #a2b1bf;
+  --line: #30404e;
+  --primary: #7bc4f4;
+  --primary-soft: #233d51;
+  --chat-bg: #111d27;
+  --positive: #75d3b6;
+  --negative: #f29ba4;
+  --on-primary: #112435;
+  color-scheme: dark;
 }
 
 * {
@@ -34,6 +112,10 @@ body {
     radial-gradient(circle at 15% -10%, rgba(56, 224, 161, 0.09), transparent 34rem),
     radial-gradient(circle at 92% 0%, rgba(244, 184, 96, 0.05), transparent 28rem),
     var(--color-ink-950);
+}
+
+:root[data-theme="light"] body {
+  background: var(--bg);
 }
 
 ::selection {
@@ -51,4 +133,37 @@ body {
   border: 1px solid rgba(127, 147, 166, 0.16);
   background: linear-gradient(180deg, rgba(17, 26, 36, 0.92), rgba(11, 17, 24, 0.92));
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+
+:root[data-theme="light"] .panel {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.direction-long {
+  color: var(--positive);
+  background: rgba(117, 211, 182, 0.12);
+}
+
+.direction-short {
+  color: var(--negative);
+  background: rgba(242, 155, 164, 0.12);
+}
+
+/* The dark badges above are mint/rose tints tuned for a near-black surface; on
+   the light surface the same alpha reads as an almost invisible wash, so derive
+   the tint from the theme's own semantic colours instead. */
+:root[data-theme="light"] .direction-long {
+  background: color-mix(in srgb, var(--positive) 12%, transparent);
+}
+
+:root[data-theme="light"] .direction-short {
+  background: color-mix(in srgb, var(--negative) 12%, transparent);
+}
+
+.position-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
 }
