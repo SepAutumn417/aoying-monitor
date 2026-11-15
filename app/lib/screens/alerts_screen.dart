@@ -122,16 +122,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     state: _channelState(controller),
                     tone: _channelTone(controller),
                   ),
-                  const _ChannelRow(
-                    name: '企业微信',
-                    detail: '兜底 · 仅 critical',
-                    state: '待配置',
-                  ),
-                  const _ChannelRow(
-                    name: '邮件',
-                    detail: '日报 / 严重告警',
-                    state: '待配置',
-                  ),
                 ],
               ),
             ),
