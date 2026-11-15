@@ -48,10 +48,10 @@ String _timeLabel(DateTime? value) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final day = DateTime(local.year, local.month, local.day);
-  final clock = '$_two(local.hour):$_two(local.minute)';
+  final clock = '${_two(local.hour)}:${_two(local.minute)}';
   if (day == today) return clock;
   if (today.difference(day).inDays == 1) return '昨天 $clock';
-  return '$_two(local.month)-$_two(local.day) $clock';
+  return '${_two(local.month)}-${_two(local.day)} $clock';
 }
 
 class TimelineScreen extends StatefulWidget {
@@ -241,7 +241,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
         children: [
           PageHeader(
             title: '发言',
-            meta: _loading ? '读取中…' : '$rows.length 条 · $_focus',
+            meta: _loading ? '读取中…' : '${rows.length} 条 · $_focus',
             action: IconButton(
               tooltip: '刷新消息',
               onPressed: _load,
@@ -445,7 +445,7 @@ class _MessageTile extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '$message.dialogTitle · $message.topicTitle',
+                  '${message.dialogTitle} · ${message.topicTitle}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppColors.mist, fontSize: 11),
@@ -502,7 +502,7 @@ class _MessageTile extends StatelessWidget {
                   Text(
                     expanded
                         ? '收起改前版本'
-                        : '改前版本 $message.revisions.length 条',
+                        : '改前版本 ${message.revisions.length} 条',
                     style: const TextStyle(color: AppColors.amber, fontSize: 11),
                   ),
                 ],
@@ -523,7 +523,7 @@ class _MessageTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '改于 $_timeLabel(revision.replacedAt)',
+                        '改于 ${_timeLabel(revision.replacedAt)}',
                         style: const TextStyle(
                           color: AppColors.mist,
                           fontSize: 10,
