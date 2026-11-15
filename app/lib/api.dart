@@ -112,6 +112,181 @@ class ApiEvent {
   );
 }
 
+/// One followed Telegram chat, as listed by the collector.
+class ApiTelegramDialog {
+  const ApiTelegramDialog({
+    required this.id,
+    required this.chatId,
+    required this.title,
+    required this.kind,
+    required this.username,
+    required this.enabled,
+    required this.lastMessageId,
+    required this.lastSyncedAt,
+    required this.messages,
+  });
+
+  final int id;
+  final int chatId;
+  final String title;
+  final String kind;
+  final String username;
+  final bool enabled;
+  final int lastMessageId;
+  final DateTime? lastSyncedAt;
+  final int messages;
+
+  factory ApiTelegramDialog.fromJson(Map<String, dynamic> json) =>
+      ApiTelegramDialog(
+        id: json['id'] as int,
+        chatId: json['chat_id'] as int,
+        title: json['title'] as String? ?? '未命名会话',
+        kind: json['kind'] as String? ?? '',
+        username: json['username'] as String? ?? '',
+        enabled: json['enabled'] as bool? ?? false,
+        lastMessageId: json['last_message_id'] as int? ?? 0,
+        lastSyncedAt: DateTime.tryParse(
+          json['last_synced_at'] as String? ?? '',
+        )?.toLocal(),
+        messages: json['messages'] as int? ?? 0,
+      );
+}
+
+/// One forum topic inside a followed chat.
+class ApiTelegramTopic {
+  const ApiTelegramTopic({
+    required this.id,
+    required this.chatId,
+    required this.topicId,
+    required this.title,
+    required this.enabled,
+    required this.lastMessageId,
+    required this.lastSyncedAt,
+    required this.messages,
+    required this.lastError,
+  });
+
+  final int id;
+  final int chatId;
+  final int topicId;
+  final String title;
+  final bool enabled;
+  final int lastMessageId;
+  final DateTime? lastSyncedAt;
+  final int messages;
+  final String lastError;
+
+  factory ApiTelegramTopic.fromJson(Map<String, dynamic> json) =>
+      ApiTelegramTopic(
+        id: json['id'] as int,
+        chatId: json['chat_id'] as int,
+        topicId: json['topic_id'] as int,
+        title: json['title'] as String? ?? '未命名话题',
+        enabled: json['enabled'] as bool? ?? false,
+        lastMessageId: json['last_message_id'] as int? ?? 0,
+        lastSyncedAt: DateTime.tryParse(
+          json['last_synced_at'] as String? ?? '',
+        )?.toLocal(),
+        messages: json['messages'] as int? ?? 0,
+        lastError: json['last_error'] as String? ?? '',
+      );
+}
+
+/// The text a message carried before the author rewrote it.
+class ApiTelegramRevision {
+  const ApiTelegramRevision({
+    required this.text,
+    required this.mediaKind,
+    required this.replacedAt,
+  });
+
+  final String text;
+  final String mediaKind;
+  final DateTime? replacedAt;
+
+  factory ApiTelegramRevision.fromJson(Map<String, dynamic> json) =>
+      ApiTelegramRevision(
+        text: json['text'] as String? ?? '',
+        mediaKind: json['media_kind'] as String? ?? '',
+        replacedAt: DateTime.tryParse(
+          json['replaced_at'] as String? ?? '',
+        )?.toLocal(),
+      );
+}
+
+/// One archived Telegram message, including edits and deletions.
+class ApiTelegramMessage {
+  const ApiTelegramMessage({
+    required this.id,
+    required this.chatId,
+    required this.dialogTitle,
+    required this.messageId,
+    required this.senderName,
+    required this.senderId,
+    required this.topicId,
+    required this.topicTitle,
+    required this.senderRole,
+    required this.replyTo,
+    required this.text,
+    required this.mediaKind,
+    required this.postedAt,
+    required this.editedAt,
+    required this.deletedAt,
+    required this.revisions,
+  });
+
+  final int id;
+  final int chatId;
+  final String dialogTitle;
+  final int messageId;
+  final String senderName;
+  final int? senderId;
+  final int? topicId;
+  final String topicTitle;
+  final String senderRole;
+  final int? replyTo;
+  final String text;
+  final String mediaKind;
+  final DateTime? postedAt;
+  final DateTime? editedAt;
+  final DateTime? deletedAt;
+  final List<ApiTelegramRevision> revisions;
+
+  bool get isDeleted => deletedAt != null;
+  bool get isEdited => editedAt != null;
+
+  factory ApiTelegramMessage.fromJson(Map<String, dynamic> json) =>
+      ApiTelegramMessage(
+        id: json['id'] as int,
+        chatId: json['chat_id'] as int,
+        dialogTitle: json['dialog_title'] as String? ?? '',
+        messageId: json['message_id'] as int? ?? 0,
+        senderName: json['sender_name'] as String? ?? '未知',
+        senderId: json['sender_id'] as int?,
+        topicId: json['topic_id'] as int?,
+        topicTitle: json['topic_title'] as String? ?? '未分类',
+        senderRole: json['sender_role'] as String? ?? 'member',
+        replyTo: json['reply_to'] as int?,
+        text: json['text'] as String? ?? '',
+        mediaKind: json['media_kind'] as String? ?? '',
+        postedAt: DateTime.tryParse(json['posted_at'] as String? ?? '')?.toLocal(),
+        editedAt: DateTime.tryParse(json['edited_at'] as String? ?? '')?.toLocal(),
+        deletedAt: DateTime.tryParse(
+          json['deleted_at'] as String? ?? '',
+        )?.toLocal(),
+        revisions: [
+          for (final item in (json['revisions'] as List?) ?? const [])
+            ApiTelegramRevision.fromJson((item as Map).cast<String, dynamic>()),
+        ],
+      );
+}
+
+/// Which slice of the archive the timeline shows.
+enum TelegramFocus { important, owner, all }
+
+/// Which lifecycle state a message is in.
+enum TelegramKind { all, media, edited, deleted }
+
 /// HTTP client for the monitor API.
 ///
 /// The access token is short-lived and stays in memory; the refresh token is
@@ -484,6 +659,58 @@ class ApiClient {
       () => _http.post(_uri(path), headers: _headers()),
     );
     return ApiEvent.fromJson((body['event'] as Map).cast<String, dynamic>());
+  }
+
+  Future<List<ApiTelegramDialog>> telegramDialogs() async {
+    final list = await _sendList(
+      '/api/telegram/dialogs',
+      () => _http.get(_uri('/api/telegram/dialogs'), headers: _headers()),
+    );
+    return list.map(ApiTelegramDialog.fromJson).toList();
+  }
+
+  Future<List<ApiTelegramTopic>> telegramTopics(int chatId) async {
+    final uri = _uri(
+      '/api/telegram/topics',
+    ).replace(queryParameters: {'chat_id': '$chatId'});
+    final list = await _sendList(
+      uri.path,
+      () => _http.get(uri, headers: _headers()),
+    );
+    return list.map(ApiTelegramTopic.fromJson).toList();
+  }
+
+  Future<List<ApiTelegramMessage>> telegramMessages({
+    int limit = 100,
+    int? chatId,
+    int? beforeId,
+    int? topicId,
+    TelegramFocus? focus,
+    TelegramKind kind = TelegramKind.all,
+    DateTime? since,
+    bool includeRevisions = true,
+  }) async {
+    final uri = _uri('/api/telegram/messages').replace(
+      queryParameters: {
+        'limit': '${limit.clamp(1, 200)}',
+        if (chatId != null) 'chat_id': '$chatId',
+        if (beforeId != null) 'before_id': '$beforeId',
+        if (topicId != null) 'topic_id': '$topicId',
+        if (focus != null) 'focus': focus.name,
+        if (kind != TelegramKind.all) 'kind': kind.name,
+        if (since != null) 'since': since.toUtc().toIso8601String(),
+        'include_revisions': '$includeRevisions',
+      },
+    );
+    final body = await _send(
+      uri.path,
+      () => _http.get(uri, headers: _headers()),
+    );
+    return List.unmodifiable(
+      ((body['messages'] as List?) ?? const []).map(
+        (e) => ApiTelegramMessage.fromJson((e as Map).cast<String, dynamic>()),
+      ),
+    );
   }
 
   Map<String, dynamic> _deviceDescriptor() {

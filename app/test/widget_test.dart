@@ -82,6 +82,9 @@ const _device = ApiDevice(
             'count': 2,
           },
           '/api/signals' => {'signals': [], 'count': 0},
+          '/api/telegram/dialogs' => [],
+          '/api/telegram/topics' => [],
+          '/api/telegram/messages' => {'messages': [], 'count': 0},
           _ => {},
         }),
         200,
@@ -151,7 +154,9 @@ void main() {
 
     await tester.tap(find.text('发言').last);
     await tester.pumpAndSettle();
-    expect(find.text('全部来源'), findsOneWidget);
+    // 发言页现在是 Telegram 归档的真实筛选维度，不再是示例数据。
+    expect(find.text('重点动态'), findsOneWidget);
+    expect(find.text('没有符合条件的消息'), findsOneWidget);
 
     await tester.tap(find.text('提醒').last);
     await tester.pumpAndSettle();
@@ -178,15 +183,14 @@ void main() {
     expect(find.textContaining('开仓价 —'), findsWidgets);
   });
 
-  testWidgets('设置页展示数据源与设备', (tester) async {
+  testWidgets('设置页只保留真实设备与开关，不再列未接入的数据源', (tester) async {
     await _enterShell(tester);
 
     await tester.tap(find.text('设置').last);
     await tester.pumpAndSettle();
-    expect(find.text('数据源'), findsOneWidget);
-    expect(find.text('Telegram'), findsOneWidget);
     expect(find.text('已登录设备'), findsOneWidget);
-    // 5 个数据源
-    expect(find.text('未接入'), findsNWidgets(5));
+    // 摆设型数据源清单已删除，避免把「未接入」当成真实状态展示。
+    expect(find.text('数据源'), findsNothing);
+    expect(find.text('未接入'), findsNothing);
   });
 }

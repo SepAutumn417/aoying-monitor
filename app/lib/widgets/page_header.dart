@@ -41,27 +41,6 @@ class PageHeader extends StatelessWidget {
   }
 }
 
-/// 「示例数据」标记：所有 Mock 内容都必须带上，避免被误读成实时数据。
-class DemoBadge extends StatelessWidget {
-  const DemoBadge({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.amber.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.amber.withValues(alpha: 0.35)),
-      ),
-      child: const Text(
-        '示例数据',
-        style: TextStyle(color: AppColors.amber, fontSize: 10, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
 /// 紧凑筛选胶囊，用于持仓/发言/提醒的过滤条。
 class FilterChipRow extends StatelessWidget {
   const FilterChipRow({

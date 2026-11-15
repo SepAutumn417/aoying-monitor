@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Database, Loader2, MessageSquare, Plug, Play, Radio, RefreshCw, Search, Square, Wallet } from "lucide-react";
+import { Loader2, MessageSquare, Play, RefreshCw, Search, Square } from "lucide-react";
 
 import { PageHeader } from "../../components/ui/PageHeader";
 import {
@@ -11,13 +11,6 @@ import {
   type ApiTelegramTopic,
 } from "../../lib/api";
 import { useLive } from "../../lib/live";
-
-const otherSources = [
-  { name: "币安", detail: "从 TG 消息与截图推断", icon: Radio, meta: "推断数据" },
-  { name: "OKX", detail: "只读 API · Orbit 实盘", icon: Wallet, meta: "官方仓位" },
-  { name: "fomo", detail: "Solana / Base 链上钱包", icon: Database, meta: "链上推断" },
-  { name: "X", detail: "@thankUcrypto_ · 轮询", icon: Radio, meta: "日常观点" },
-];
 
 const stateLabel: Record<ApiCollectorStatus["state"], string> = {
   stopped: "已停止",
@@ -287,28 +280,6 @@ export function SourcesPage() {
       <PageHeader title="数据源" meta="采集状态与关注范围" />
       <div className="space-y-3">
         <TelegramPanel />
-        <section className="panel overflow-hidden rounded-xl">
-          <ul className="divide-y divide-mist-400/[0.07]">
-            {otherSources.map(({ name, detail, icon: Icon, meta }) => (
-              <li key={name} className="flex items-center gap-3 px-4 py-3">
-                <div className="grid h-8 w-8 place-items-center rounded-lg border border-mist-400/15 bg-white/[0.03]">
-                  <Icon className="h-3.5 w-3.5 text-mist-200" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-white">{name}</p>
-                  <p className="mt-0.5 text-[11px] text-mist-400">{detail}</p>
-                </div>
-                <span className="hidden rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-mist-400 sm:inline">
-                  {meta}
-                </span>
-                <span className="flex w-16 items-center justify-end gap-1 text-right text-[11px] text-amber-signal">
-                  <Plug className="h-3 w-3" />
-                  未接入
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
       </div>
     </div>
   );
