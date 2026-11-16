@@ -2,10 +2,10 @@
 
 The chain under test is the one a phone actually depends on:
 
-    bot text → ledger → `signal.*` event → websocket frame
+    bot text → source archive + `signal.*` alert → websocket frame
 
-Everything here uses the real collector, the real ledger and the real event
-log. Only Telegram itself is faked.
+The real collector and event log are used; Telegram itself is faked.
+Legacy ledger helpers are tested separately but are not part of ingestion.
 """
 
 from __future__ import annotations
@@ -176,12 +176,8 @@ async def _cleanup(account: TelegramAccount, dialog: TelegramDialog) -> None:
             TelegramMessage.__table__.delete().where(TelegramMessage.dialog_id == dialog.id)
         )
         await db.execute(Event.__table__.delete())
-        await db.execute(
-            TelegramDialog.__table__.delete().where(TelegramDialog.id == dialog.id)
-        )
-        await db.execute(
-            TelegramAccount.__table__.delete().where(TelegramAccount.id == account.id)
-        )
+        await db.execute(TelegramDialog.__table__.delete().where(TelegramDialog.id == dialog.id))
+        await db.execute(TelegramAccount.__table__.delete().where(TelegramAccount.id == account.id))
         await db.commit()
 
 
@@ -225,7 +221,7 @@ def test_open_signal_pushes_a_signal_event() -> None:
     assert payload["entry"] == 84768.06
     assert payload["qty"] == 11.46
     assert payload["liq"] == 118053.71
-    assert payload["position_status"] == "open"
+    assert payload["position_status"] is None
     assert payload["headline"] == "新开仓 空 BTCUSDT 5x"
 
 
@@ -236,9 +232,7 @@ def test_each_action_pushes_its_own_kind() -> None:
         account, dialog = await _seed()
         try:
             collector = _collector()
-            for index, text in enumerate(
-                (OPEN_TEXT, ADD_TEXT, REDUCE_TEXT, CLOSE_TEXT), start=1
-            ):
+            for index, text in enumerate((OPEN_TEXT, ADD_TEXT, REDUCE_TEXT, CLOSE_TEXT), start=1):
                 await collector.ingest_message(
                     FakeMessage(5100 + index, text), CHAT_ID, edited=False
                 )
@@ -359,8 +353,8 @@ def test_signal_event_payload_carries_the_reported_realized() -> None:
     assert payload["position_status"] is None
 
 
-def test_add_signal_carries_the_position_it_landed_on() -> None:
-    """The push must say which position the action changed, not just the symbol."""
+def test_add_alert_copies_source_quantities_without_a_position() -> None:
+    """Alerts preserve bot quantities without linking a reconstructed position."""
 
     async def scenario() -> dict[str, Any]:
         account, dialog = await _seed()
@@ -376,9 +370,9 @@ def test_add_signal_carries_the_position_it_landed_on() -> None:
             await _cleanup(account, dialog)
 
     payload = run(scenario())
-    assert payload["position_id"] is not None
-    assert payload["position_status"] == "open"
-    assert payload["position_qty"] == 22.21
+    assert payload["position_id"] is None
+    assert payload["position_status"] is None
+    assert payload["position_qty"] is None
     assert payload["qty_before"] == 11.46
     assert payload["qty_after"] == 22.21
     assert payload["leverage_actual"] == 4.82
@@ -504,42 +498,25 @@ def test_test_event_endpoint_pushes_the_chosen_action() -> None:
         assert legacy["kind"] == "system.test"
 
 
-def test_signal_edit_updates_existing_signal_and_position() -> None:
-    """An edited signal message must update the ledger without creating duplicate signals."""
+def test_message_edit_updates_source_without_building_a_position() -> None:
+    """Edits update the TG archive, not a second reconstructed ledger."""
 
     async def scenario() -> None:
         account, dialog = await _seed()
         try:
             collector = _collector()
-            # 1. Ingest original signal
             await collector.ingest_message(FakeMessage(7100, OPEN_TEXT), CHAT_ID, edited=False)
-            async with SessionLocal() as db:
-                sig = await db.scalar(
-                    select(Signal).where(Signal.dialog_id == dialog.id, Signal.message_id == 7100)
-                )
-                assert sig is not None
-                assert sig.entry == 84768.06
-                pos = await db.scalar(select(Position).where(Position.symbol == "BTCUSDT", Position.status == "open"))
-                assert pos is not None
-                assert pos.entry == 84768.06
-
-            # 2. Ingest edited message with corrected entry price
             edited_text = OPEN_TEXT.replace("84768.06", "85123.45")
-            edit_msg = FakeMessage(7100, edited_text)
-            edit_msg.edit_date = datetime.now(UTC)
-            await collector.ingest_message(edit_msg, CHAT_ID, edited=True)
-
+            edit = FakeMessage(7100, edited_text, edited_at=datetime.now(UTC))
+            await collector.ingest_message(edit, CHAT_ID, edited=True)
             async with SessionLocal() as db:
-                sig_count = len(list(await db.scalars(select(Signal).where(Signal.dialog_id == dialog.id, Signal.message_id == 7100))))
-                assert sig_count == 1
-                sig_updated = await db.scalar(
-                    select(Signal).where(Signal.dialog_id == dialog.id, Signal.message_id == 7100)
+                source = await db.scalar(
+                    select(TelegramMessage).where(
+                        TelegramMessage.dialog_id == dialog.id, TelegramMessage.message_id == 7100
+                    )
                 )
-                assert sig_updated.entry == 85123.45
-                pos_updated = await db.scalar(select(Position).where(Position.symbol == "BTCUSDT", Position.status == "open"))
-                assert pos_updated.entry == 85123.45
-
-                # Verify events: only 1 signal.open was pushed
+                assert source.text == edited_text
+                assert await db.scalar(select(Signal).where(Signal.dialog_id == dialog.id)) is None
                 events = list(await db.scalars(select(Event).where(Event.kind == "signal.open")))
                 assert len(events) == 1
         finally:

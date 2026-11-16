@@ -35,11 +35,11 @@ export const ACTION_LABEL: Record<SignalAction, string> = {
 
 /** One line of plain language, used where the label alone is too terse. */
 export const ACTION_HINT: Record<SignalAction, string> = {
-  open: "他开了一笔新仓",
-  add: "他在原有仓位上加大",
-  reduce: "他减掉了一部分仓位",
-  close: "他把这笔平掉了",
-  leverage: "只调了杠杆，仓位没变",
+  open: "消息提及开仓",
+  add: "消息提及加仓",
+  reduce: "消息提及减仓",
+  close: "消息提及平仓",
+  leverage: "消息提及调杠杆",
 };
 
 const ACTION_TONE: Record<SignalAction, string> = {

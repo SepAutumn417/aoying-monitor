@@ -454,44 +454,29 @@ def test_forum_history_keeps_media_download_path(monkeypatch):
     asyncio.run(scenario())
 
 
-def test_forum_backfill_derives_signals_and_positions():
-    """Forum sync / backfill must derive signals and update the position ledger."""
-    from app.copy_models import Position, Signal
+def test_forum_backfill_preserves_source_without_building_positions():
+    """Both official messages and pasted templates remain original archive rows."""
+    from app.copy_models import Signal
     from app.telegram_forum_sync import sync_forum
     from tests.test_signal_push import OPEN_TEXT
 
     async def scenario():
         dialog = await seed()
-        signal_msg = raw(8888, 926111, body=OPEN_TEXT, sender=8797733775)
-        # Also include a chatter message from a member in 748 that pastes signal text
-        fake_msg = raw(8889, 748, body=OPEN_TEXT, sender=123456)
-        client = ForumClient([signal_msg, fake_msg])
+        client = ForumClient(
+            [
+                raw(8888, 926111, body=OPEN_TEXT, sender=8797733775),
+                raw(8889, 748, body=OPEN_TEXT, sender=123456),
+            ]
+        )
         await sync_forum(client, dialog, limit=10)
-
         async with SessionLocal() as db:
-            sig = await db.scalar(
-                select(Signal).where(
-                    Signal.dialog_id == dialog.id,
-                    Signal.message_id == 8888,
+            sources = list(
+                await db.scalars(
+                    select(TelegramMessage).where(TelegramMessage.dialog_id == dialog.id)
                 )
             )
-            assert sig is not None
-            assert sig.symbol == "BTCUSDT"
-            assert sig.kind == "open"
-
-            # Fake message from non-bot in non-signal topic must NOT create a signal
-            fake_sig = await db.scalar(
-                select(Signal).where(
-                    Signal.dialog_id == dialog.id,
-                    Signal.message_id == 8889,
-                )
-            )
-            assert fake_sig is None
-
-            pos = await db.scalar(
-                select(Position).where(Position.symbol == "BTCUSDT", Position.status == "open")
-            )
-            assert pos is not None
-            assert pos.entry == 84768.06
+            assert len(sources) == 2
+            assert all(row.text == OPEN_TEXT for row in sources)
+            assert await db.scalar(select(Signal).where(Signal.dialog_id == dialog.id)) is None
 
     asyncio.run(scenario())

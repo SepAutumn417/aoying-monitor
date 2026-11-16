@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:aoying_monitor/app.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -171,53 +169,6 @@ void main() {
         live.dispose();
         session.dispose();
       }
-    },
-  );
-  testWidgets(
-    'initial error retries to empty ledger without demo; narrow layout fits',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      var fail = true;
-      final api = ApiClient(
-        httpClient: MockClient((r) async {
-          if (fail) return http.Response('{"detail":"offline"}', 503);
-          return http.Response(
-            jsonEncode(switch (r.url.path) {
-              '/api/copy/status' => {
-                'positions_open': 0,
-                'positions_closed': 0,
-                'realized_closed': 0,
-                'signals': 0,
-                'events': 0,
-                'last_signal_at': null,
-              },
-              '/api/positions' => {'positions': [], 'count': 0},
-              _ => {'signals': [], 'count': 0},
-            }),
-            200,
-          );
-        }),
-      );
-      final session = signedIn(api);
-      final live = FakeLive(api);
-      await tester.pumpWidget(AoyingApp(session: session, live: live));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('账本加载失败'), findsOneWidget);
-      fail = false;
-      await tester.tap(find.text('重试').first);
-      await tester.pumpAndSettle();
-      expect(find.text('最近账本中暂无未平仓记录'), findsOneWidget);
-      expect(find.text('暂无信号'), findsOneWidget);
-      expect(find.text('示例数据'), findsNothing);
-      expect(find.text('0'), findsWidgets);
-      expect(find.text('—'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox());
-      live.dispose();
-      session.dispose();
     },
   );
   test('models preserve null, zero, cumulative realized and source times', () {

@@ -10,7 +10,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.copy import ledger as copy_ledger, notify
+from app.copy import notify
 from app.db import SessionLocal
 from app.events import append_event, hub
 from app.models import utcnow
@@ -121,22 +121,17 @@ async def sync_forum(client: Any, dialog: TelegramDialog, limit: int, download: 
                     row, outcome = await upsert_message(db, dialog, data, commit=False)
                     if download is not None and row.media_kind and not row.media_path:
                         media.append((row, message))
-                    if is_signal_source(dialog.chat_id, topic.topic_id, row.sender_id):
-                        derived = await copy_ledger.ingest_message_result(db, row)
-                        signal, position, created = derived
-                        if created and signal is not None and not initial:
-                            sig_event = await append_event(
-                                db,
-                                notify.event_kind(signal.kind),
-                                notify.signal_payload(
-                                    signal,
-                                    position=position,
-                                    dialog=dialog.title or "",
-                                    text=row.text or "",
-                                ),
-                                commit=False,
+                    if (
+                        outcome == "created"
+                        and not initial
+                        and is_signal_source(dialog.chat_id, topic.topic_id, row.sender_id)
+                    ):
+                        alert = notify.source_message_alert(row, dialog.title or "")
+                        if alert is not None:
+                            kind, payload = alert
+                            events_to_publish.append(
+                                await append_event(db, kind, payload, commit=False)
                             )
-                            events_to_publish.append(sig_event)
                     if outcome == "edited" and not initial:
                         payload = message_payload(row, dialog)
                         payload["outcome"] = "edited"

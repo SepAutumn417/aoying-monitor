@@ -5,8 +5,6 @@ import '../app_scope.dart';
 import '../live.dart';
 import '../theme.dart';
 import 'alerts_screen.dart';
-import 'dashboard_screen.dart';
-import 'positions_screen.dart';
 import 'settings_screen.dart';
 import 'timeline_screen.dart';
 
@@ -21,13 +19,16 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  late int _index = widget.initialIndex.clamp(0, _screens.length - 1);
+  // Keep existing debug/deep links: 0/1/2 now open TG messages, 3 alerts, 4 settings.
+  late int _index = switch (widget.initialIndex) {
+    3 => 1,
+    4 => 2,
+    _ => 0,
+  };
   LiveController? _live;
   AlertController? _alerts;
 
   static const _screens = <Widget>[
-    DashboardScreen(),
-    PositionsScreen(),
     TimelineScreen(),
     AlertsScreen(),
     SettingsScreen(),
@@ -109,19 +110,9 @@ class _HomeShellState extends State<HomeShell> {
             onDestinationSelected: (value) => setState(() => _index = value),
             destinations: [
               const NavigationDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: '总览',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.account_balance_wallet_outlined),
-                selectedIcon: Icon(Icons.account_balance_wallet),
-                label: '持仓',
-              ),
-              const NavigationDestination(
                 icon: Icon(Icons.forum_outlined),
                 selectedIcon: Icon(Icons.forum),
-                label: '发言',
+                label: 'TG消息',
               ),
               NavigationDestination(
                 icon: _Badge(

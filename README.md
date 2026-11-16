@@ -1,20 +1,21 @@
 # 熬鹰资本 · 交易监控
 
-**信号驱动的自动跟单系统**：把熬鹰资本在 Telegram（四分区）、X、OKX、fomo（链上）以及
-Binance（经 TG 推断）的动作，实时转成结构化信号并执行跟单，同时用 AI 分析其群聊观点作为决策否决器。
+**Telegram 原始信息监控**：同步指定群的四个话题、机器人持仓快照和消息修订，
+在 Web / Android 查看原文，并对可信来源的新动作消息发出提醒。
 
-> 当前进度：**采集层已通**（I1 登录/设备/实时推送、I2.1b Telegram 四分区采集已完成）。
-> 下一步是 I3a 信号解析入库 → I3b 影子跟单（不下单）→ I3c AI 语义层 → I4 实盘。
+> 当前产品范围（2026-11-16）：以 TG 原文及最新快照为准，**不从消息推导仓位、盈亏或持仓生命周期**。
+> Web / Android 已解除派生账本加载和展示；采集链路不再自动写入 Signal / Position / PositionEvent。
+> 提醒仅逐条提取原文动作，不代表真实交易或新建仓位。自动跟单继续暂停。
 >
-> 方案：[跟单方案](docs/superpowers/specs/2026-11-07-copy-trading-strategy.md) ·
-> [待办池](docs/backlog.md)
+> [本次收口范围](docs/source-only-monitoring-plan.md)。旧[跟单方案](docs/superpowers/specs/2026-11-07-copy-trading-strategy.md)
+> 与[待办池](docs/backlog.md)保留作历史参考，不是当前交付或实施承诺。历史账本数据及兼容 API 不删除。
 
 ## 结构
 
 ```
 backend/    FastAPI 服务（Python 3.12+），/healthz 健康检查
 web/        React + Vite + Tailwind 的 Web 控制台
-app/        Flutter Android 客户端（I0 只有骨架）
+app/        Flutter Android 客户端（TG 原文、提醒、原生后台监控）
 docs/       设计、计划、增量说明、设计 token
 ```
 

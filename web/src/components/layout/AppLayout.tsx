@@ -11,9 +11,8 @@ import {
   Moon,
   Settings,
   Sun,
-  Wallet,
 } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 
 import { useAlerts } from "../../lib/alerts";
 import { useAuth } from "../../lib/auth";
@@ -23,7 +22,6 @@ import { SignalToast } from "../../features/alerts/SignalToast";
 const navigation = [
   { to: "/", label: "总览", icon: LayoutDashboard, end: true },
   { to: "/workspace", label: "消息中心", icon: MessageSquare },
-  { to: "/positions", label: "持仓", icon: Wallet },
   { to: "/timeline", label: "发言", icon: MessageSquare },
   { to: "/alerts", label: "提醒", icon: Bell },
   { to: "/sources", label: "数据源", icon: Database },
@@ -73,10 +71,6 @@ export function AppLayout() {
   const { user, logout } = useAuth();
   const { status } = useLive();
   const { unread, latest, muted, toggleMuted } = useAlerts();
-  const { pathname } = useLocation();
-  // The message workspace owns the whole viewport; the ledger chrome would
-  // otherwise squeeze it between a fixed rail and a padded main column.
-  const fullBleed = pathname === "/workspace" || pathname.startsWith("/workspace/");
   const socket = socketLabel[status] ?? socketLabel.idle;
   const initial = (user?.display_name ?? user?.username ?? "管").slice(0, 1).toUpperCase();
 
@@ -103,15 +97,6 @@ export function AppLayout() {
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
-  if (fullBleed) {
-    return (
-      <div className="min-h-screen">
-        <Outlet />
-        <SignalToast latest={latest} muted={muted} />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen">
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[210px] flex-col border-r border-mist-400/10 bg-ink-950/80 px-3 py-4 backdrop-blur md:flex">
@@ -128,34 +113,6 @@ export function AppLayout() {
         <nav className="mt-5 flex flex-1 flex-col gap-0.5">
           <NavItems unread={unread} />
 
-          <div className="mt-4 border-t border-mist-400/10 pt-3 space-y-0.5">
-            <p className="px-2.5 text-[10px] uppercase tracking-wider text-mist-400/60 font-semibold">
-              设计中心原型
-            </p>
-            <NavLink
-              to="/workspace"
-              className={({ isActive }) =>
-                [
-                  "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition",
-                  isActive
-                    ? "bg-signal-400/10 text-signal-300"
-                    : "text-mist-400 hover:bg-white/[0.03] hover:text-signal-300",
-                ].join(" ")
-              }
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              消息工作台
-            </NavLink>
-            <a
-              href="/home.html"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-mist-400 hover:bg-white/[0.03] hover:text-signal-300 transition"
-            >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              总览原型
-            </a>
-          </div>
         </nav>
 
         <div className="space-y-2 border-t border-mist-400/10 px-1.5 pt-3">

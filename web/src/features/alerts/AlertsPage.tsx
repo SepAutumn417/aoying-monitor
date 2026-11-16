@@ -12,7 +12,7 @@ import { BellRing, BellOff, Volume2, VolumeX } from "lucide-react";
 
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useAlerts } from "../../lib/alerts";
-import { price, usd } from "../../lib/format";
+import { price } from "../../lib/format";
 import {
   ACTION_HINT,
   ACTION_LABEL,
@@ -41,11 +41,6 @@ function dayOf(value: string): string {
     date.getDate() === today.getDate();
   if (sameDay) return "今天";
   return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
-}
-
-function money(value: number | null, digits = 2): string | null {
-  if (value === null) return null;
-  return usd(value, digits);
 }
 
 export function AlertsPage() {
@@ -95,6 +90,7 @@ export function AlertsPage() {
         }
       />
 
+      <p className="mb-3 text-xs text-mist-400">提醒来自单条 Telegram 消息的解析，不代表实际持仓或成交。</p>
       <section className="panel mb-4 rounded-xl px-4 py-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {filters.map((option) => {
@@ -152,8 +148,6 @@ export function AlertsPage() {
         <section className="panel overflow-hidden rounded-xl">
           <ul className="divide-y divide-mist-400/[0.07]">
             {rows.map((alert) => {
-              const realized = money(alert.realized);
-              const floating = money(alert.floating);
               return (
                 <li key={alert.id} className="flex items-start gap-3 px-4 py-3">
                   <span
@@ -182,26 +176,6 @@ export function AlertsPage() {
                       {alert.entry !== null ? (
                         <span>
                           开仓价 <span className="font-mono text-mist-200">{price(alert.entry)}</span>
-                        </span>
-                      ) : null}
-                      {realized ? (
-                        <span>
-                          已实现{" "}
-                          <span
-                            className={`font-mono ${(alert.realized ?? 0) >= 0 ? "text-signal-300" : "text-danger"}`}
-                          >
-                            {realized}
-                          </span>
-                        </span>
-                      ) : null}
-                      {floating ? (
-                        <span>
-                          浮盈亏{" "}
-                          <span
-                            className={`font-mono ${(alert.floating ?? 0) >= 0 ? "text-signal-300" : "text-danger"}`}
-                          >
-                            {floating}
-                          </span>
                         </span>
                       ) : null}
                     </p>

@@ -4,193 +4,155 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aoying_monitor/api.dart';
 import 'package:aoying_monitor/app.dart';
 import 'package:aoying_monitor/live.dart';
 import 'package:aoying_monitor/session.dart';
 
-/// 手机竖屏但足够高，保证 ListView 里的卡片都被构建出来（默认 600 逻辑像素会裁掉下半屏）。
-void _useTallSurface(WidgetTester tester) {
-  tester.view.physicalSize = const Size(1080, 2400);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-}
-
-const _user = ApiUser(id: 1, username: 'admin', displayName: '管理员');
-const _device = ApiDevice(
-  id: 7,
-  name: '测试手机',
-  platform: 'android',
-  pushMode: 'local',
-  lastSeenAt: null,
-);
-
-/// A session that believes it is signed in, plus a socket that never dials.
-({SessionController session, LiveController live}) _signedIn() {
-  final api = ApiClient(
-    httpClient: MockClient(
-      (request) async => http.Response(
-        jsonEncode(switch (request.url.path) {
-          '/api/copy/status' => {
-            'positions_open': 32,
-            'positions_closed': 17,
-            'realized_closed': 9.5,
-            'signals': 50,
-            'events': 70,
-            'last_signal_at': null,
-          },
-          '/api/positions' => {
-            'positions': [
-              {
-                'id': 1,
-                'symbol': 'LIVEBTC',
-                'side': 'long',
-                'status': 'open',
-                'opened_at': '2026-11-09T00:00:00Z',
-                'entry': null,
-                'qty_current': 0,
-                'realized': 7,
-                'held_seconds': 10,
-                'events': [
-                  {
-                    'id': 1,
-                    'kind': 'reduce',
-                    'at': '2026-11-09T01:00:00Z',
-                    'realized': 5,
-                  },
-                  {
-                    'id': 2,
-                    'kind': 'close',
-                    'at': '2026-11-09T02:00:00Z',
-                    'realized': 7,
-                  },
-                ],
-              },
-              {
-                'id': 2,
-                'symbol': 'LIVEETH',
-                'side': 'short',
-                'status': 'closed',
-                'opened_at': '2026-11-09T00:00:00Z',
-                'realized': 0,
-                'held_seconds': 10,
-                'events': [],
-              },
-            ],
-            'count': 2,
-          },
-          '/api/signals' => {'signals': [], 'count': 0},
-          '/api/telegram/dialogs' => [],
-          '/api/telegram/topics' => [],
-          '/api/telegram/messages' => {'messages': [], 'count': 0},
-          _ => {},
-        }),
-        200,
-      ),
-    ),
-  );
-  final session = SessionController.seeded(
-    api: api,
-    user: _user,
-    device: _device,
-  );
-  final live = LiveController(api: api, autoConnect: false);
-  return (session: session, live: live);
-}
-
-Future<void> _enterShell(WidgetTester tester) async {
-  _useTallSurface(tester);
-  final scope = _signedIn();
-  await tester.pumpWidget(AoyingApp(session: scope.session, live: scope.live));
-  await tester.pumpAndSettle();
-}
-
 void main() {
-  testWidgets('未登录时展示登录表单', (tester) async {
-    _useTallSurface(tester);
-    final api = ApiClient(baseUrl: 'http://127.0.0.1:9');
-    final session = SessionController.anonymous(api: api);
-    await tester.pumpWidget(
-      AoyingApp(
-        session: session,
-        live: LiveController(api: api, autoConnect: false),
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  Future<({LiveController live, List<Uri> requests})> enter(
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final requests = <Uri>[];
+    final api = ApiClient(
+      httpClient: MockClient((request) async {
+        requests.add(request.url);
+        return http.Response(
+          jsonEncode(switch (request.url.path) {
+            '/api/telegram/dialogs' => [],
+            '/api/telegram/topics' => [],
+            '/api/telegram/messages' => {
+              'messages': [
+                {
+                  'id': 1,
+                  'chat_id': 10,
+                  'message_id': 20,
+                  'sender_name': '原发言人',
+                  'sender_role': 'owner',
+                  'dialog_title': 'TG群',
+                  'topic_title': '原始报告',
+                  'text': 'TG原文：BTC持仓截图说明',
+                  'edited_at': '2026-11-09T01:00:00Z',
+                  'deleted_at': '2026-11-09T02:00:00Z',
+                  'revisions': [
+                    {
+                      'text': '原始快照：修改前原文',
+                      'media_kind': 'photo',
+                      'replaced_at': '2026-11-09T01:00:00Z',
+                    },
+                  ],
+                },
+              ],
+            },
+            _ => {},
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    final session = SessionController.seeded(
+      api: api,
+      user: const ApiUser(id: 1, username: 'admin', displayName: '管理员'),
+      device: const ApiDevice(
+        id: 7,
+        name: '测试手机',
+        platform: 'android',
+        pushMode: 'local',
+        lastSeenAt: null,
       ),
     );
-    await tester.pump();
+    final live = LiveController(api: api, autoConnect: false);
+    addTearDown(live.dispose);
+    addTearDown(session.dispose);
+    await tester.pumpWidget(AoyingApp(session: session, live: live));
+    await tester.pumpAndSettle();
+    return (live: live, requests: requests);
+  }
 
-    expect(find.text('登录'), findsOneWidget);
-    expect(find.text('用户名'), findsOneWidget);
-    expect(find.text('密码'), findsOneWidget);
-    expect(find.text('进入监控台'), findsOneWidget);
+  testWidgets('登录后直接展示TG消息，不加载推导仓位账本', (tester) async {
+    final scope = await enter(tester);
+    expect(find.text('TG原文：BTC持仓截图说明'), findsOneWidget);
+    expect(find.text('持仓'), findsNothing);
+    expect(find.text('未平仓数'), findsNothing);
+    expect(find.text('Telegram 信号账本'), findsNothing);
+    expect(
+      scope.requests.map((r) => r.path),
+      isNot(contains('/api/copy/status')),
+    );
+    expect(
+      scope.requests.map((r) => r.path),
+      isNot(contains('/api/positions')),
+    );
+    expect(scope.requests.map((r) => r.path), isNot(contains('/api/signals')));
+    expect(
+      scope.requests.where((r) => r.path == '/api/telegram/messages'),
+      hasLength(1),
+    );
   });
 
-  testWidgets('总览展示仓位与发言，而不是接入状态', (tester) async {
-    await _enterShell(tester);
-
-    expect(find.text('未平仓数'), findsOneWidget);
-    expect(find.text('32'), findsOneWidget);
-    expect(find.text('17'), findsOneWidget);
-    expect(find.text('9.5'), findsOneWidget);
-    expect(find.text('Telegram 信号账本'), findsOneWidget);
-    expect(find.text('最近信号'), findsOneWidget);
-    expect(find.text('LIVEBTC'), findsWidgets);
-    expect(find.text('总名义仓位'), findsNothing);
-    expect(find.text('场所分布'), findsNothing);
-    expect(find.text('今日已实现'), findsNothing);
-    // 接入状态与增量路线已从总览移除，只在设置页出现。
-    expect(find.text('增量路线'), findsNothing);
-    expect(find.text('系统骨架已就绪'), findsNothing);
+  testWidgets('保留编辑删除标记与修改前原始快照', (tester) async {
+    await enter(tester);
+    expect(find.text('已编辑'), findsWidgets);
+    expect(find.text('已删除'), findsWidgets);
+    await tester.tap(find.text('改前版本 1 条'));
+    await tester.pumpAndSettle();
+    expect(find.text('原始快照：修改前原文'), findsOneWidget);
   });
 
-  testWidgets('底部导航在持仓、发言、提醒之间切换', (tester) async {
-    await _enterShell(tester);
-
-    await tester.tap(find.text('持仓').last);
+  testWidgets('消息筛选和实时事件仅重新加载TG原文', (tester) async {
+    final scope = await enter(tester);
+    await tester.tap(find.text('全部原文'));
     await tester.pumpAndSettle();
-    expect(find.text('最近 100 条以内 · 非完整历史'), findsOneWidget);
-    expect(find.text('全部'), findsOneWidget);
-
-    await tester.tap(find.text('发言').last);
+    expect(scope.requests.last.queryParameters['focus'], 'all');
+    expect(scope.requests.last.queryParameters['include_revisions'], 'true');
+    await tester.tap(find.text('已删除').first);
     await tester.pumpAndSettle();
-    // 发言页现在是 Telegram 归档的真实筛选维度，不再是示例数据。
-    expect(find.text('重点动态'), findsOneWidget);
-    expect(find.text('没有符合条件的消息'), findsOneWidget);
+    expect(scope.requests.last.queryParameters['kind'], 'deleted');
+    final before = scope.requests.length;
+    scope.live.ingestEvents([
+      const ApiEvent(
+        id: 1,
+        kind: 'telegram.message.edited',
+        payload: {},
+        createdAt: null,
+      ),
+    ]);
+    await tester.pumpAndSettle();
+    expect(scope.requests.length, before + 1);
+    expect(scope.requests.last.path, '/api/telegram/messages');
+  });
 
+  testWidgets('底部导航保留TG消息提醒与设置', (tester) async {
+    await enter(tester);
+    expect(find.byType(NavigationDestination), findsNWidgets(3));
     await tester.tap(find.text('提醒').last);
     await tester.pumpAndSettle();
     expect(find.text('送达通道'), findsOneWidget);
-  });
-
-  testWidgets('持仓按状态筛选，生命周期显示累计而非求和', (tester) async {
-    await _enterShell(tester);
-
-    await tester.tap(find.text('持仓').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('LIVEBTC'), findsOneWidget);
-    expect(find.text('LIVEETH'), findsOneWidget);
-    await tester.tap(find.text('当前持仓').first);
-    await tester.pumpAndSettle();
-    expect(find.text('LIVEETH'), findsNothing);
-    await tester.tap(find.text('LIVEBTC'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('累计已实现 5'), findsOneWidget);
-    expect(find.textContaining('累计已实现 7'), findsWidgets);
-    expect(find.textContaining('累计已实现 12'), findsNothing);
-    expect(find.textContaining('数量 0'), findsWidgets);
-    expect(find.textContaining('开仓价 —'), findsWidgets);
-  });
-
-  testWidgets('设置页只保留真实设备与开关，不再列未接入的数据源', (tester) async {
-    await _enterShell(tester);
-
     await tester.tap(find.text('设置').last);
     await tester.pumpAndSettle();
     expect(find.text('已登录设备'), findsOneWidget);
-    // 摆设型数据源清单已删除，避免把「未接入」当成真实状态展示。
-    expect(find.text('数据源'), findsNothing);
-    expect(find.text('未接入'), findsNothing);
+    await tester.tap(find.text('TG消息').last);
+    await tester.pumpAndSettle();
+    expect(find.text('TG原文：BTC持仓截图说明'), findsOneWidget);
+  });
+
+  testWidgets('未登录时展示登录表单', (tester) async {
+    final api = ApiClient(baseUrl: 'http://127.0.0.1:9');
+    final session = SessionController.anonymous(api: api);
+    final live = LiveController(api: api, autoConnect: false);
+    addTearDown(session.dispose);
+    addTearDown(live.dispose);
+    await tester.pumpWidget(AoyingApp(session: session, live: live));
+    await tester.pump();
+    expect(find.text('进入监控台'), findsOneWidget);
   });
 }

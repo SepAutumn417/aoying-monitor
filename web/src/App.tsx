@@ -5,7 +5,6 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { AlertsPage } from "./features/alerts/AlertsPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
-import { PositionsPage } from "./features/positions/PositionsPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { SourcesPage } from "./features/sources/SourcesPage";
 import { TimelinePage } from "./features/timeline/TimelinePage";
@@ -13,7 +12,6 @@ import { WorkspacePage } from "./features/workspace/WorkspacePage";
 import { AlertProvider } from "./lib/alerts";
 import { useAuth } from "./lib/auth";
 import { LiveProvider } from "./lib/live";
-import { LedgerProvider } from "./lib/ledger";
 
 function RequireAuth() {
   const { status } = useAuth();
@@ -35,9 +33,7 @@ function RequireAuth() {
   return (
     <LiveProvider>
       <AlertProvider>
-        <LedgerProvider>
-          <AppLayout />
-        </LedgerProvider>
+        <AppLayout />
       </AlertProvider>
     </LiveProvider>
   );
@@ -61,7 +57,7 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="workspace" element={<WorkspacePage />} />
         <Route path="timeline" element={<TimelinePage />} />
-        <Route path="positions" element={<PositionsPage />} />
+        <Route path="positions" element={<Navigate to="/timeline" replace />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="sources" element={<SourcesPage />} />
         <Route path="settings" element={<SettingsPage />} />

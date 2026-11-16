@@ -18,7 +18,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.copy.parser import parse_signal
 from app.copy_models import Position, Signal
+from app.telegram_models import TelegramMessage
 
 SIGNAL_EVENT_PREFIX = "signal."
 ACTIONS = ("open", "add", "reduce", "close", "leverage")
@@ -197,3 +199,40 @@ def signal_payload(
         "summary": summary(signal),
         "test": test,
     }
+
+
+def source_message_alert(
+    message: TelegramMessage, dialog: str = ""
+) -> tuple[str, dict[str, Any]] | None:
+    """Format an alert from one original message, without persisting a ledger.
+
+    The transient object only adapts the existing client notification protocol.
+    Its signal/position IDs are null; all numbers come from the source text.
+    """
+    parsed = parse_signal(message.text or "")
+    if parsed is None:
+        return None
+    signal = Signal(
+        id=None,
+        dialog_id=message.dialog_id,
+        message_id=message.message_id,
+        kind=parsed.kind,
+        action=parsed.action,
+        symbol=parsed.symbol,
+        side=parsed.side,
+        lev_target=parsed.leverage,
+        lev_from=parsed.leverage_from,
+        lev_to=parsed.leverage_to,
+        lev_actual=parsed.lev_actual,
+        qty=parsed.qty,
+        qty_before=parsed.qty_before,
+        qty_after=parsed.qty_after,
+        entry=parsed.entry,
+        mark=parsed.mark,
+        margin=parsed.margin,
+        liq=parsed.liq,
+        floating=parsed.floating,
+        realized=parsed.realized,
+        posted_at=message.posted_at,
+    )
+    return event_kind(parsed.kind), signal_payload(signal, dialog=dialog, text=message.text or "")

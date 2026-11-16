@@ -125,26 +125,52 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("Telegram-only runtime", () => {
+  it.each(["/", "/workspace", "/positions", "/timeline"])("never requests inferred ledger data at %s", async (path) => {
+    await act(async () => { renderAt(path); });
+    await screen.findByText("开多 BTC 2x");
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(urls.some((url) => /^\/api\/(copy\/status|positions|signals)(?:[?]|$)/.test(url))).toBe(false);
+    expect(screen.queryByText("当前仓位")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "持仓" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Telegram 信号账本/)).not.toBeInTheDocument();
+  });
+
+  it("removes the historical ledger prototype entry", async () => {
+    await act(async () => { renderAt("/"); });
+    expect(screen.queryByRole("link", { name: "总览原型" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the workspace original-message filters and snapshots", async () => {
+    renderAt("/workspace");
+    await screen.findByText("开多 BTC 2x");
+    expect(screen.getByRole("button", { name: "本人发言" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "已删除" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "已编辑" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "禁言群" })).toBeInTheDocument();
+  });
+});
+
 describe("App shell", () => {
-  it("renders the dashboard with positions and signals", async () => {
+  it("renders the dashboard with Telegram originals", async () => {
     await act(async () => { renderAt("/"); });
 
     expect(screen.getByText("监控总览")).toBeInTheDocument();
-    expect(screen.getByText("当前仓位")).toBeInTheDocument();
+    expect(screen.queryByText("当前仓位")).not.toBeInTheDocument();
     expect(screen.getByText("重要消息")).toBeInTheDocument();
     expect(screen.getByText("会话")).toBeInTheDocument();
   });
 
-  it("labels real ledger source without demo fallback", async () => {
+  it("labels the original source without demo fallback", async () => {
     await act(async () => { renderAt("/"); });
-    expect(screen.getByText(/Telegram 信号账本/)).toBeInTheDocument();
+    expect(screen.getByText(/Telegram 原文与编辑快照/)).toBeInTheDocument();
     expect(screen.queryByText("示例数据")).not.toBeInTheDocument();
   });
 
-  it("renders empty positions with status filters", async () => {
+  it("redirects the retired positions route to original messages", async () => {
     renderAt("/positions");
-    expect(screen.getByRole("heading", { name: "持仓" })).toBeInTheDocument();
-    expect(await screen.findByText("暂无仓位记录")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "发言" })).toBeInTheDocument();
+    expect(await screen.findByText("开多 BTC 2x")).toBeInTheDocument();
     expect(screen.queryByText("BTCUSDT")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "全部" })).toBeInTheDocument();
   });
@@ -226,7 +252,7 @@ describe("Session gate", () => {
     fireEvent.change(screen.getByLabelText("密码"), { target: { value: "good" } });
     fireEvent.click(screen.getByRole("button", { name: "进入监控台" }));
 
-    expect(await screen.findByRole("heading", { name: "持仓" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "发言" })).toBeInTheDocument();
   });
 });
 

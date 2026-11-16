@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 
 import 'alerts.dart';
 import 'live.dart';
-import 'ledger.dart';
 import 'session.dart';
 
 /// Hand-held dependency scope: one session, one live socket, one alert centre.
@@ -14,14 +13,12 @@ class AppScope extends InheritedWidget {
     required this.session,
     required this.live,
     required this.alerts,
-    required this.ledger,
     required super.child,
   });
 
   final SessionController session;
   final LiveController live;
   final AlertController alerts;
-  final LedgerController ledger;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -41,6 +38,5 @@ class AppScope extends InheritedWidget {
   bool updateShouldNotify(AppScope oldWidget) =>
       session != oldWidget.session ||
       live != oldWidget.live ||
-      alerts != oldWidget.alerts ||
-      ledger != oldWidget.ledger;
+      alerts != oldWidget.alerts;
 }

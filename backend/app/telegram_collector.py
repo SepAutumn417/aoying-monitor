@@ -23,9 +23,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.copy import ledger as copy_ledger
 from app.copy import notify
-from app.copy_models import Signal
 from app.db import SessionLocal
 from app.events import append_event, hub
 from app.models import utcnow
@@ -413,20 +411,8 @@ class TelegramCollector:
             data["chat_id"] = chat_id
             row, outcome = await upsert_message(db, dialog, data, commit=False)
 
-            # Self-healing check: if unchanged, verify whether signal derivation was completed previously.
             if outcome == "unchanged":
-                existing_signal_id = await db.scalar(
-                    select(Signal.id).where(
-                        Signal.dialog_id == dialog.id,
-                        Signal.message_id == row.message_id,
-                    )
-                )
-                if (
-                    existing_signal_id is not None
-                    or not row.text
-                    or not is_signal_source(dialog.chat_id, row.topic_id, row.sender_id)
-                ):
-                    return None
+                return None
 
             if download and row.media_kind and not row.media_path:
                 await self._download(db, row, raw, dialog)
@@ -435,17 +421,6 @@ class TelegramCollector:
             if max_id != dialog.last_message_id:
                 dialog.last_message_id = max_id
                 dialog.last_synced_at = utcnow()
-
-            # Derive the trading signal in the same transaction as the message
-            # so the ledger can never drift from what the bot actually said.
-            derived: tuple[Any, Any, bool] = (None, None, False)
-            if is_signal_source(dialog.chat_id, row.topic_id, row.sender_id):
-                try:
-                    derived = await copy_ledger.ingest_message_result(db, row)
-                except Exception:
-                    log.warning(
-                        "signal derivation failed for message %s", row.message_id, exc_info=True
-                    )
 
             events_to_publish: list[dict[str, Any]] = []
             event = None
@@ -456,25 +431,17 @@ class TelegramCollector:
                 event = await append_event(db, kind, payload, commit=False)
                 events_to_publish.append(event)
 
-            # A structured signal is what a phone can turn into "新开多 BTCUSDT
-            # 10x" with its own sound. Only a first sight pushes: an edit or a
-            # backfill over covered ground must not ring twice.
-            signal, position, created = derived
-            if created and signal is not None:
-                sig_event = await append_event(
-                    db,
-                    notify.event_kind(signal.kind),
-                    notify.signal_payload(
-                        signal,
-                        position=position,
-                        dialog=dialog.title or "",
-                        text=row.text or "",
-                    ),
-                    commit=False,
-                )
+            # Notification metadata is copied from this one source message only.
+            # Do not create or update a derived signal/position ledger.
+            alert = (
+                notify.source_message_alert(row, dialog.title or "")
+                if outcome == "created"
+                else None
+            )
+            if alert is not None and is_signal_source(dialog.chat_id, row.topic_id, row.sender_id):
+                kind, payload = alert
+                sig_event = await append_event(db, kind, payload, commit=False)
                 events_to_publish.append(sig_event)
-                if event is None:
-                    event = sig_event
 
             await db.commit()
             for ev in events_to_publish:
@@ -512,14 +479,13 @@ class TelegramCollector:
             if dialog is None:
                 return
             rows = await mark_deleted(db, dialog, message_ids, commit=False)
-            retracted = await copy_ledger.retract_messages(db, dialog.id, message_ids)
             events_to_publish: list[dict[str, Any]] = []
             for row in rows:
                 payload = message_payload(row, dialog)
                 payload["deleted"] = True
                 ev = await append_event(db, "telegram.message.deleted", payload, commit=False)
                 events_to_publish.append(ev)
-            if rows or retracted:
+            if rows:
                 await db.commit()
                 for ev in events_to_publish:
                     await hub.publish(ev)
