@@ -20,6 +20,7 @@ from app.copy.parser import ParsedSignal, parse_signal
 from app.copy_models import Position, PositionEvent, Signal
 from app.models import utcnow
 from app.telegram_models import TelegramMessage
+from app.telegram_topics import is_signal_source
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +53,110 @@ async def ingest(
     return signal
 
 
+async def _recalculate_position(db: AsyncSession, position: Position) -> None:
+    events = list(
+        await db.scalars(
+            select(PositionEvent)
+            .where(PositionEvent.position_id == position.id)
+            .order_by(PositionEvent.at, PositionEvent.id)
+        )
+    )
+    if not events:
+        await db.delete(position)
+        return
+    if events[0].kind != KIND_OPEN:
+        for ev in events:
+            await db.delete(ev)
+        await db.delete(position)
+        return
+
+    first = events[0]
+    first_sig = await db.get(Signal, first.signal_id)
+    if first_sig is not None:
+        position.symbol = first_sig.symbol
+        position.side = first_sig.side
+        position.open_signal_id = first_sig.id
+
+    position.opened_at = first.at
+    position.entry = first.entry
+    position.qty_open = first.qty_after if first.qty_after is not None else first.qty_before
+    position.qty_current = first.qty_after
+    position.lev = first.lev
+    position.margin = first.margin
+    position.realized = first.realized or 0.0
+    position.status = "open"
+    position.closed_at = None
+
+    for ev in events[1:]:
+        if ev.entry is not None:
+            position.entry = ev.entry
+        if ev.qty_after is not None:
+            position.qty_current = ev.qty_after
+        if ev.lev is not None:
+            position.lev = ev.lev
+        if ev.margin is not None:
+            position.margin = ev.margin
+        if ev.realized is not None:
+            position.realized = ev.realized
+        if ev.kind == KIND_CLOSE:
+            position.status = "closed"
+            position.closed_at = ev.at
+            position.qty_current = 0.0
+        else:
+            position.status = "open"
+            position.closed_at = None
+
+
+async def retract_messages(
+    db: AsyncSession, dialog_id: int, message_ids: list[int]
+) -> list[int]:
+    """Retract signals and recalculate or remove positions when messages are deleted or edited away."""
+    if not message_ids:
+        return []
+    signals = list(
+        await db.scalars(
+            select(Signal).where(
+                Signal.dialog_id == dialog_id,
+                Signal.message_id.in_(message_ids),
+            )
+        )
+    )
+    if not signals:
+        return []
+
+    affected_pos_ids: set[int] = set()
+    retracted_ids = [s.id for s in signals]
+    for signal in signals:
+        pe = await db.scalar(
+            select(PositionEvent).where(PositionEvent.signal_id == signal.id)
+        )
+        if pe is not None:
+            affected_pos_ids.add(pe.position_id)
+            await db.delete(pe)
+        await db.delete(signal)
+    await db.flush()
+
+    for pos_id in affected_pos_ids:
+        pos = await db.get(Position, pos_id)
+        if pos is None:
+            continue
+        events = list(
+            await db.scalars(
+                select(PositionEvent)
+                .where(PositionEvent.position_id == pos_id)
+                .order_by(PositionEvent.at, PositionEvent.id)
+            )
+        )
+        if not events or pos.open_signal_id in retracted_ids or events[0].kind != KIND_OPEN:
+            for ev in events:
+                await db.delete(ev)
+            await db.delete(pos)
+        else:
+            await _recalculate_position(db, pos)
+    await db.flush()
+    return retracted_ids
+
+
 async def ingest_result(
     db: AsyncSession,
     *,
@@ -71,22 +176,88 @@ async def ingest_result(
     covered) must not push the phone a second time.
     """
 
-    if not text:
-        return None, None, False
     existing = await db.scalar(
         select(Signal).where(Signal.dialog_id == dialog_id, Signal.message_id == message_id)
     )
     if existing is not None:
+        parsed = parse_signal(text) if text else None
+        if parsed is None:
+            await retract_messages(db, dialog_id, [message_id])
+            return None, None, False
+
+        changed = (
+            existing.kind != parsed.kind
+            or existing.action != parsed.action
+            or existing.symbol != parsed.symbol
+            or existing.side != parsed.side
+            or existing.lev_target != parsed.leverage
+            or existing.lev_from != parsed.leverage_from
+            or existing.lev_to != parsed.leverage_to
+            or existing.lev_actual != parsed.lev_actual
+            or existing.qty != parsed.qty
+            or existing.qty_before != parsed.qty_before
+            or existing.qty_after != parsed.qty_after
+            or existing.entry != parsed.entry
+            or existing.mark != parsed.mark
+            or existing.margin != parsed.margin
+            or existing.liq != parsed.liq
+            or existing.floating != parsed.floating
+            or existing.realized != parsed.realized
+        )
+        if changed:
+            existing.kind = parsed.kind
+            existing.action = parsed.action
+            existing.symbol = parsed.symbol
+            existing.side = parsed.side
+            existing.lev_target = parsed.leverage
+            existing.lev_from = parsed.leverage_from
+            existing.lev_to = parsed.leverage_to
+            existing.lev_actual = parsed.lev_actual
+            existing.qty = parsed.qty
+            existing.qty_before = parsed.qty_before
+            existing.qty_after = parsed.qty_after
+            existing.entry = parsed.entry
+            existing.mark = parsed.mark
+            existing.margin = parsed.margin
+            existing.liq = parsed.liq
+            existing.floating = parsed.floating
+            existing.realized = parsed.realized
+            existing.parsed_at = utcnow()
+            pe = await db.scalar(
+                select(PositionEvent).where(PositionEvent.signal_id == existing.id)
+            )
+            position = None
+            if pe is not None:
+                pe.kind = parsed.kind
+                pe.qty_before = parsed.qty_before
+                pe.qty_after = parsed.qty_after
+                pe.entry = parsed.entry
+                pe.mark = parsed.mark
+                pe.margin = parsed.margin
+                pe.lev = parsed.leverage
+                pe.floating = parsed.floating
+                pe.realized = parsed.realized
+                position = await db.get(Position, pe.position_id)
+                if position is not None:
+                    if position.open_signal_id == existing.id:
+                        position.symbol = parsed.symbol
+                        position.side = parsed.side
+                    await _recalculate_position(db, position)
+            return existing, position, False
         return existing, None, False
+
+    if not text:
+        return None, None, False
 
     parsed = parse_signal(text)
     if parsed is None:
         return None, None, False
 
-    signal = _signal_row(dialog_id, message_id, parsed, posted_at)
-    db.add(signal)
-    await db.flush()  # assign signal.id for the event row
-    position = await _apply(db, signal)
+    async with db.begin_nested():
+        signal = _signal_row(dialog_id, message_id, parsed, posted_at)
+        db.add(signal)
+        await db.flush()  # assign signal.id for the event row
+        position = await _apply(db, signal)
     return signal, position, True
 
 
@@ -235,10 +406,15 @@ async def rebuild_from_messages(db: AsyncSession) -> RebuildStats:
 
     rows = await db.scalars(
         select(TelegramMessage)
-        .where(TelegramMessage.text != "")
+        .where(
+            TelegramMessage.text != "",
+            TelegramMessage.deleted_at.is_(None),
+        )
         .order_by(TelegramMessage.posted_at, TelegramMessage.message_id)
     )
     for message in rows:
+        if not is_signal_source(message.chat_id, message.topic_id, message.sender_id):
+            continue
         stats.messages += 1
         signal = await ingest_message(db, message)
         if signal is None:

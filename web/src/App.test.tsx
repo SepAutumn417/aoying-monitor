@@ -130,9 +130,9 @@ describe("App shell", () => {
     await act(async () => { renderAt("/"); });
 
     expect(screen.getByText("监控总览")).toBeInTheDocument();
-    expect(screen.getByText("当前持仓")).toBeInTheDocument();
-    expect(screen.getByText("最近信号")).toBeInTheDocument();
-    expect(screen.getByText("最近已平仓")).toBeInTheDocument();
+    expect(screen.getByText("当前仓位")).toBeInTheDocument();
+    expect(screen.getByText("重要消息")).toBeInTheDocument();
+    expect(screen.getByText("会话")).toBeInTheDocument();
   });
 
   it("labels real ledger source without demo fallback", async () => {

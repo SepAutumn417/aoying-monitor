@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
 from ..config import get_settings
@@ -9,7 +9,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/healthz")
-async def healthz() -> dict[str, object]:
+async def healthz(response: Response) -> dict[str, object]:
     database = "ok"
     try:
         async with engine.connect() as connection:
@@ -24,6 +24,8 @@ async def healthz() -> dict[str, object]:
                 cursor = await latest_id(db)
         except Exception:  # noqa: BLE001
             cursor = None
+    else:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     return {
         "status": "ok" if database == "ok" else "degraded",
@@ -35,5 +37,5 @@ async def healthz() -> dict[str, object]:
 
 
 @router.get("/api/health")
-async def api_health() -> dict[str, object]:
-    return await healthz()
+async def api_health(response: Response) -> dict[str, object]:
+    return await healthz(response)

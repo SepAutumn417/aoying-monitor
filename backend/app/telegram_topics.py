@@ -8,10 +8,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.telegram_models import TelegramDialog, TelegramTopic
 
 TARGET_CHAT_ID = -1002568478710
-TOPICS = {1: "聊天群", 748: "禁言群", 926111: "熬鹰交易信号推送", 1006930: "消息通知"}
-OWNER_ID = 7460753506
+SIGNAL_TOPIC_ID = 926111
 SIGNAL_BOT_ID = 8797733775
+OWNER_ID = 7460753506
 ASSISTANT_ID = 8907156644
+TOPICS = {1: "聊天群", 748: "禁言群", SIGNAL_TOPIC_ID: "熬鹰交易信号推送", 1006930: "消息通知"}
+
+
+def is_signal_source(chat_id: int, topic_id: int | None, sender_id: int | None) -> bool:
+    """Only the dedicated signal bot in the signal topic can emit trading signals."""
+    if chat_id == TARGET_CHAT_ID:
+        return topic_id == SIGNAL_TOPIC_ID and sender_id == SIGNAL_BOT_ID
+    return True
 
 
 def topic_id_of(message: Any) -> int | None:

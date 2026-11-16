@@ -77,3 +77,6 @@ web/tw-test.mjs
 web/debug/
 dist-release/
 /docs/s?.png
+/docs/p?.png
+/docs/q?.png
+/docs/r*.png

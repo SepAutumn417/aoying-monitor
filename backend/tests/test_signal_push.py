@@ -502,3 +502,75 @@ def test_test_event_endpoint_pushes_the_chosen_action() -> None:
         # No action keeps the old event, which the pre-signal UI still reads.
         legacy = client.post("/api/events/test", headers=headers).json()["event"]
         assert legacy["kind"] == "system.test"
+
+
+def test_signal_edit_updates_existing_signal_and_position() -> None:
+    """An edited signal message must update the ledger without creating duplicate signals."""
+
+    async def scenario() -> None:
+        account, dialog = await _seed()
+        try:
+            collector = _collector()
+            # 1. Ingest original signal
+            await collector.ingest_message(FakeMessage(7100, OPEN_TEXT), CHAT_ID, edited=False)
+            async with SessionLocal() as db:
+                sig = await db.scalar(
+                    select(Signal).where(Signal.dialog_id == dialog.id, Signal.message_id == 7100)
+                )
+                assert sig is not None
+                assert sig.entry == 84768.06
+                pos = await db.scalar(select(Position).where(Position.symbol == "BTCUSDT", Position.status == "open"))
+                assert pos is not None
+                assert pos.entry == 84768.06
+
+            # 2. Ingest edited message with corrected entry price
+            edited_text = OPEN_TEXT.replace("84768.06", "85123.45")
+            edit_msg = FakeMessage(7100, edited_text)
+            edit_msg.edit_date = datetime.now(UTC)
+            await collector.ingest_message(edit_msg, CHAT_ID, edited=True)
+
+            async with SessionLocal() as db:
+                sig_count = len(list(await db.scalars(select(Signal).where(Signal.dialog_id == dialog.id, Signal.message_id == 7100))))
+                assert sig_count == 1
+                sig_updated = await db.scalar(
+                    select(Signal).where(Signal.dialog_id == dialog.id, Signal.message_id == 7100)
+                )
+                assert sig_updated.entry == 85123.45
+                pos_updated = await db.scalar(select(Position).where(Position.symbol == "BTCUSDT", Position.status == "open"))
+                assert pos_updated.entry == 85123.45
+
+                # Verify events: only 1 signal.open was pushed
+                events = list(await db.scalars(select(Event).where(Event.kind == "signal.open")))
+                assert len(events) == 1
+        finally:
+            await _cleanup(account, dialog)
+
+    run(scenario())
+
+
+def test_rebuild_from_messages_excludes_deleted_messages() -> None:
+    """Rebuilding the ledger must skip messages that were deleted in Telegram."""
+
+    async def scenario() -> None:
+        account, dialog = await _seed()
+        try:
+            collector = _collector()
+            await collector.ingest_message(FakeMessage(7200, OPEN_TEXT), CHAT_ID, edited=False)
+            async with SessionLocal() as db:
+                msg = await db.scalar(
+                    select(TelegramMessage).where(
+                        TelegramMessage.dialog_id == dialog.id,
+                        TelegramMessage.message_id == 7200,
+                    )
+                )
+                assert msg is not None
+                msg.deleted_at = datetime.now(UTC)
+                await db.commit()
+
+                stats = await copy_ledger.rebuild_from_messages(db)
+                assert stats.signals == 0
+                assert stats.positions == 0
+        finally:
+            await _cleanup(account, dialog)
+
+    run(scenario())

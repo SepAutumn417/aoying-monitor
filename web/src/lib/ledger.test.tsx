@@ -5,7 +5,6 @@ import { api } from "./api";
 import type { ApiEvent, ApiPosition, ApiPositionEvent } from "./api";
 import type { SocketStatus } from "./socket";
 import { LedgerProvider, useLedger } from "./ledger";
-import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { PositionsPage } from "../features/positions/PositionsPage";
 
 const context = vi.hoisted(() => ({ userId: 1, events: [] as ApiEvent[], status: "live" as SocketStatus }));
@@ -29,11 +28,10 @@ beforeEach(() => {
 
 describe("shared ledger", () => {
   it("loads in parallel and renders server totals rather than row or event sums", async () => {
-    render(tree(<DashboardPage />));
-    expect(screen.getByText("正在加载账本…")).toBeInTheDocument();
-    expect(await screen.findByText("123.45")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("34")).toBeInTheDocument();
+    render(tree(<PositionsPage />));
+    expect(await screen.findByText(/123\.45/)).toBeInTheDocument();
+    expect(screen.getByText(/全局未平仓 12/)).toBeInTheDocument();
+    expect(screen.getByText(/已平仓 34/)).toBeInTheDocument();
     expect(screen.getByText("REALUSDT")).toBeInTheDocument();
     expect(screen.queryByText("示例数据")).not.toBeInTheDocument();
     expect(api.positions).toHaveBeenCalledWith({ limit: 100, includeEvents: true });
@@ -93,10 +91,10 @@ describe("shared ledger", () => {
     await act(async () => next.resolve(summary));
   });
   it("keeps the previous snapshot visibly stale on refresh error", async () => {
-    render(tree(<DashboardPage />)); await screen.findByText("123.45");
+    render(tree(<PositionsPage />)); await screen.findByText(/123\.45/);
     vi.mocked(api.copyStatus).mockRejectedValueOnce(new Error("offline"));
     fireEvent.click(screen.getByRole("button", { name: "刷新账本" }));
     expect(await screen.findByText(/数据已过期/)).toBeInTheDocument();
-    expect(screen.getByText("123.45")).toBeInTheDocument();
+    expect(screen.getByText(/123\.45/)).toBeInTheDocument();
   });
 });

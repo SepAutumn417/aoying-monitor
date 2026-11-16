@@ -5,15 +5,20 @@ General uses filtered chat history, not GetReplies(1). Every pass scans at most
 never leap over unfinished catch-up. History is silent (no new-trade events).
 """
 
+import logging
 from typing import Any
 
 from sqlalchemy import select
 
+from app.copy import ledger as copy_ledger, notify
 from app.db import SessionLocal
+from app.events import append_event, hub
 from app.models import utcnow
 from app.telegram_models import TelegramDialog, TelegramMessage, TelegramTopic
-from app.telegram_store import normalize, upsert_message
-from app.telegram_topics import SIGNAL_BOT_ID, ensure_topics, topic_id_of
+from app.telegram_store import message_payload, normalize, upsert_message
+from app.telegram_topics import SIGNAL_BOT_ID, ensure_topics, is_signal_source, topic_id_of
+
+log = logging.getLogger(__name__)
 
 PAGE_SIZE = 200
 MAX_PAGES = 20
@@ -109,12 +114,36 @@ async def sync_forum(client: Any, dialog: TelegramDialog, limit: int, download: 
                 # Fetch all IO first, then atomically persist contents and cursor.
                 unique = {m.id: m for m in batch if topic_id_of(m) == topic.topic_id}
                 media = []
+                events_to_publish: list[dict[str, Any]] = []
                 for message in sorted(unique.values(), key=lambda m: m.id):
                     data = normalize(message)
                     data["chat_id"] = dialog.chat_id
-                    row, _ = await upsert_message(db, dialog, data, commit=False)
+                    row, outcome = await upsert_message(db, dialog, data, commit=False)
                     if download is not None and row.media_kind and not row.media_path:
                         media.append((row, message))
+                    if is_signal_source(dialog.chat_id, topic.topic_id, row.sender_id):
+                        derived = await copy_ledger.ingest_message_result(db, row)
+                        signal, position, created = derived
+                        if created and signal is not None and not initial:
+                            sig_event = await append_event(
+                                db,
+                                notify.event_kind(signal.kind),
+                                notify.signal_payload(
+                                    signal,
+                                    position=position,
+                                    dialog=dialog.title or "",
+                                    text=row.text or "",
+                                ),
+                                commit=False,
+                            )
+                            events_to_publish.append(sig_event)
+                    if outcome == "edited" and not initial:
+                        payload = message_payload(row, dialog)
+                        payload["outcome"] = "edited"
+                        ev = await append_event(
+                            db, "telegram.message.edited", payload, commit=False
+                        )
+                        events_to_publish.append(ev)
                 state = await db.get(TelegramTopic, topic.id)
                 state.last_message_id = max(state.last_message_id, cursor)
                 if initial:
@@ -124,6 +153,8 @@ async def sync_forum(client: Any, dialog: TelegramDialog, limit: int, download: 
                 state.last_synced_at = utcnow()
                 state.last_error = "扫描达到每轮4000条上限；下轮继续补洞" if bounded else ""
                 await db.commit()
+                for ev in events_to_publish:
+                    await hub.publish(ev)
                 # Downloads are best effort and only follow the atomic archive commit.
                 for row, message in media:
                     await download(db, row, message, dialog)

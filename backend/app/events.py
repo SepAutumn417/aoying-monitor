@@ -100,14 +100,22 @@ def serialize(event: Event) -> dict[str, Any]:
 
 
 async def append_event(
-    db: AsyncSession, kind: str, payload: dict[str, Any] | None = None
+    db: AsyncSession,
+    kind: str,
+    payload: dict[str, Any] | None = None,
+    *,
+    commit: bool = True,
 ) -> dict[str, Any]:
     event = Event(kind=kind, payload=json.dumps(payload or {}, ensure_ascii=False))
     db.add(event)
-    await db.commit()
-    await db.refresh(event)
+    if commit:
+        await db.commit()
+        await db.refresh(event)
+    else:
+        await db.flush()
     data = serialize(event)
-    await hub.publish(data)
+    if commit:
+        await hub.publish(data)
     return data
 
 

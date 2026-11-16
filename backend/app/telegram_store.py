@@ -200,7 +200,11 @@ async def revisions_of(
 
 
 async def mark_deleted(
-    db: AsyncSession, dialog: TelegramDialog, message_ids: list[int]
+    db: AsyncSession,
+    dialog: TelegramDialog,
+    message_ids: list[int],
+    *,
+    commit: bool = True,
 ) -> list[TelegramMessage]:
     if not message_ids:
         return []
@@ -218,7 +222,10 @@ async def mark_deleted(
     stamp = utcnow()
     for row in rows:
         row.deleted_at = stamp
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     return rows
 
 
