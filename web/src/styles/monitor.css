@@ -1,0 +1,965 @@
+/* Source monitor & Ucome Aoying reference styling */
+:root:not([data-theme="dark"]) {
+  --bg: #faf9f5;
+  --surface: #ffffff;
+  --surface-subtle: #f6f5ef;
+  --text: #111827;
+  --muted: #6b7280;
+  --line: #edeae0;
+  --card-border: #e6e3d8;
+  --primary: #176fa8;
+  --primary-soft: #eaf4fc;
+  --accent-yellow: #f3dc7b;
+  --accent-gold: #c29910;
+  --pnl-negative: #e04b4b;
+  --pnl-positive: #0a8c54;
+  --chart-up: #089981;
+  --chart-down: #f23645;
+  color-scheme: light;
+  background: var(--bg);
+  color: var(--text);
+}
+
+:root[data-theme="dark"] {
+  --bg: #121417;
+  --surface: #1a1d21;
+  --surface-subtle: #22262c;
+  --text: #f3f4f6;
+  --muted: #9ca3af;
+  --line: #2b3038;
+  --card-border: #2e343d;
+  --primary: #38bdf8;
+  --primary-soft: rgba(56, 189, 248, 0.12);
+  --accent-yellow: #d4a017;
+  --accent-gold: #eab308;
+  --pnl-negative: #f87171;
+  --pnl-positive: #34d399;
+  --chart-up: #089981;
+  --chart-down: #f23645;
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.monitor-app {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+/* ==================== Top Navbar (U来) ==================== */
+.ucome-navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.ucome-topbar {
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 0 28px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.ucome-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.ucome-logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ucome-brand-text {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.ucome-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+}
+.ucome-tab-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.ucome-tab-item:hover {
+  color: var(--text);
+}
+.ucome-tab-item.is-active {
+  color: var(--text);
+}
+.ucome-tab-item.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: -15px;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: #d4b138;
+  border-radius: 2px;
+}
+.ucome-tab-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+/* Tools on right */
+.monitor-tools {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 6px;
+}
+.monitor-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-right: 12px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.monitor-connection i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.monitor-connection.connection-live i {
+  background: #089981;
+}
+.monitor-connection.connection-connecting i,
+.monitor-connection.connection-retrying i {
+  background: #eab308;
+}
+.monitor-icon-button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.monitor-icon-button:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+.monitor-account {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.monitor-count {
+  font-size: 11px;
+  line-height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
+  text-align: center;
+  background: var(--accent-yellow);
+  color: #594200;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+/* ==================== Main Content Layout ==================== */
+.ucome-main-content {
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 20px 28px 40px;
+}
+.aoying-home-view {
+  width: 100%;
+}
+.aoying-main-grid {
+  display: grid;
+  grid-template-columns: 410px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.aoying-grid-left {
+  min-width: 0;
+}
+.aoying-grid-right {
+  min-width: 0;
+}
+
+/* ==================== Left Column: 熬鹰持仓卡片 ==================== */
+.position-sidebar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.aoying-card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* Profile row */
+.profile-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.profile-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.avatar-wrapper {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+.avatar-svg {
+  width: 100%;
+  height: 100%;
+}
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.profile-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.profile-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.profile-pill {
+  font-size: 11px;
+  padding: 2px 7px;
+  background: var(--surface);
+  border: 1px solid #dcd8cc;
+  border-radius: 10px;
+  color: var(--muted);
+}
+.profile-pnl-summary {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.metric-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.pnl-summary-val {
+  font-size: 18px;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+}
+.pnl-summary-val.negative,
+.banner-pnl-val.negative {
+  color: var(--pnl-negative);
+}
+.pnl-summary-val.positive,
+.banner-pnl-val.positive {
+  color: var(--pnl-positive);
+}
+
+/* Summary metrics row */
+.summary-metrics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.metric-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.metric-val {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+
+/* Active position block */
+.active-position-block {
+  padding-top: 18px;
+}
+.position-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.position-symbol-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.position-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.position-type-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+}
+.position-side-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.position-side-badge.long {
+  background: rgba(10, 140, 84, 0.1);
+  color: var(--pnl-positive);
+}
+.position-side-badge.short {
+  background: rgba(224, 75, 75, 0.1);
+  color: var(--pnl-negative);
+}
+
+/* Banner PnL */
+.position-pnl-banner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.pnl-banner-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.banner-pnl-val {
+  font-size: 28px;
+  font-weight: 800;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.02em;
+}
+
+/* 4-grid stats */
+.position-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.stat-card {
+  background: var(--surface-subtle);
+  border-radius: 8px;
+  padding: 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.stat-number {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+.stat-subtext {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Switcher chips */
+.position-switcher-tabs {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.switcher-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.switcher-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.switcher-chip {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.switcher-chip.active {
+  background: #fdf5d6;
+  border-color: #d4b138;
+  color: #574200;
+  font-weight: 600;
+}
+
+/* Footnote */
+.sidebar-footnote {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 0 4px;
+  line-height: 1.5;
+}
+
+/* ==================== Right Column: TradingView K线图 ==================== */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+}
+.chart-card.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  border-radius: 0;
+  padding: 20px;
+}
+.chart-card.is-fullscreen .chart-canvas-container {
+  height: calc(100vh - 200px) !important;
+}
+
+/* Chart Header */
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.chart-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.chart-symbol {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.interval-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.interval-btn {
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.interval-btn:hover {
+  color: var(--text);
+}
+.interval-btn.is-active {
+  background: var(--accent-yellow);
+  color: #4a3800;
+  font-weight: 700;
+}
+.chart-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-tool-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chart-tool-btn:hover {
+  color: var(--text);
+  border-color: #bbb;
+}
+.chart-icon-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chart-icon-btn:hover {
+  color: var(--text);
+  border-color: #bbb;
+}
+
+/* OHLC bar */
+.chart-ohlc-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-feature-settings: "tnum";
+}
+.ohlc-val {
+  font-weight: 600;
+  color: var(--text);
+  margin-left: 2px;
+}
+
+/* Canvas wrapper & Drawing toolbar */
+.chart-canvas-wrapper {
+  display: flex;
+  gap: 8px;
+  position: relative;
+  margin-bottom: 12px;
+}
+.chart-drawing-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  align-self: flex-start;
+}
+.toolbar-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.toolbar-btn:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.05);
+}
+.toolbar-btn.active {
+  color: #111;
+  background: #fdf5d6;
+}
+.chart-canvas-container {
+  flex: 1;
+  min-height: 520px;
+  width: 100%;
+}
+
+/* Controls bar below chart */
+.chart-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.chart-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.chart-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+.chart-checkbox-label input[type="checkbox"] {
+  accent-color: #d4b138;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+.checkbox-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.live-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #089981;
+}
+.live-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #089981;
+  box-shadow: 0 0 0 2px rgba(8, 153, 129, 0.2);
+}
+
+/* Chart Footer bar */
+.chart-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.chart-footer-note {
+  max-width: 65%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chart-footer-meta {
+  white-space: nowrap;
+}
+
+/* ==================== Telegram Sync Collapsible Section ==================== */
+.telegram-sync-section {
+  margin-top: 28px;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.sync-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--line);
+}
+.sync-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.sync-section-body.is-compact {
+  padding: 20px 24px;
+}
+.sync-section-body.is-expanded {
+  padding: 24px;
+}
+
+/* Existing Telegram column components */
+.monitor-columns {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.monitor-source-panel {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.monitor-section-heading {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.monitor-eyebrow {
+  display: block;
+  font: 10px/1.6 monospace;
+  letter-spacing: 0.12em;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+.monitor-section-heading h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.monitor-section-heading p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.monitor-source-summary {
+  margin: 16px 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.monitor-source-summary h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.monitor-state {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.monitor-source-summary p,
+.monitor-topic-status p {
+  color: var(--muted);
+  font-size: 12px;
+}
+.monitor-topic-status {
+  list-style: none;
+  margin: 0;
+  padding: 0 20px;
+}
+.monitor-topic-status li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.monitor-topic-status strong {
+  font-weight: 500;
+  font-size: 13px;
+}
+.monitor-topic-symbol {
+  color: var(--primary);
+  margin-right: 6px;
+}
+.monitor-panel-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.monitor-notice {
+  margin: 16px 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Important messages column */
+.monitor-originals {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.monitor-originals .section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.monitor-originals .section-head h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.important-list {
+  padding: 0 20px;
+}
+.important-row {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+.event-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.event-heading h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.event-tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--surface-subtle);
+  color: var(--muted);
+}
+.event-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 1200px) {
+  .aoying-main-grid {
+    grid-template-columns: 1fr;
+  }
+  .monitor-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 768px) {
+  .ucome-topbar {
+    padding: 0 16px;
+    height: auto;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .ucome-nav-tabs {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+  }
+  .ucome-main-content {
+    padding: 16px 14px;
+  }
+  .position-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .chart-drawing-toolbar {
+    display: none;
+  }
+  .chart-canvas-container {
+    min-height: 400px;
+  }
+  .chart-footer-note {
+    max-width: 100%;
+  }
+  .chart-footer-bar {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}
+@media (max-width: 600px) {
+  .chart-card {
+    padding: 14px 12px;
+    overflow-x: hidden;
+  }
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .chart-header-left {
+    width: 100%;
+    gap: 8px;
+  }
+  .interval-selector {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .interval-btn {
+    padding: 2px 7px;
+    font-size: 11px;
+  }
+  .chart-header-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .chart-ohlc-bar {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    font-size: 12px;
+  }
+  .chart-controls-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .chart-controls-left {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .monitor-workbench,
+  .monitor-columns,
+  .monitor-thread,
+  .monitor-source-panel,
+  .monitor-originals {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .monitor-thread > div {
+    max-width: 100%;
+  }
+}

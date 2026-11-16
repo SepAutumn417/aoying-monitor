@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -148,6 +148,50 @@ describe("Telegram-only runtime", () => {
     expect(screen.getByRole("button", { name: "已删除" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "已编辑" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "禁言群" })).toBeInTheDocument();
+  });
+});
+
+describe("Source monitor layout", () => {
+  beforeEach(() => { localStorage.removeItem("aoying-theme"); });
+  afterEach(() => { localStorage.removeItem("aoying-theme"); });
+
+  it("defaults to light, persists a toggle and has one top navigation", async () => {
+    await act(async () => { renderAt("/"); });
+    expect(document.documentElement.dataset.theme).toBe("light");
+    const nav = screen.getByRole("navigation", { name: "主导航" });
+    expect(nav.closest("header")).not.toBeNull();
+    expect(screen.getAllByRole("navigation")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "工作台" })).toHaveAttribute("href", "/workspace");
+    expect(screen.queryByRole("link", { name: "发言" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "切换到深色主题" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("aoying-theme")).toBe("dark");
+  });
+
+  it("honours a persisted dark preference", async () => {
+    localStorage.setItem("aoying-theme", "dark");
+    await act(async () => { renderAt("/"); });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("puts actual source sync data before important originals", async () => {
+    await act(async () => { renderAt("/"); });
+    const source = screen.getByRole("complementary", { name: "来源与同步" });
+    const originals = screen.getByRole("region", { name: "重要消息" });
+    expect(source.compareDocumentPosition(originals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(await within(source).findByText("熬鹰交易信号推送")).toBeInTheDocument();
+    expect(screen.getByText("采集中")).toBeInTheDocument();
+    expect(screen.getAllByText("尚未完成同步")).toHaveLength(3);
+    expect(source).toHaveTextContent("20 条");
+  });
+
+  it.each(["/workspace", "/timeline"])("keeps topics in the left source pane at %s", async (path) => {
+    await act(async () => { renderAt(path); });
+    const source = screen.getByRole("complementary", { name: "会话与分区" });
+    expect(source).toContainElement(await screen.findByRole("button", { name: "禁言群" }));
+    expect(screen.getByRole("region", { name: "原文列表" })).toHaveTextContent("开多 BTC 2x");
+    fireEvent.change(screen.getByRole("textbox", { name: "搜索发言" }), { target: { value: "not found" } });
+    expect(screen.getByText(/当前筛选下没有消息/)).toBeInTheDocument();
   });
 });
 

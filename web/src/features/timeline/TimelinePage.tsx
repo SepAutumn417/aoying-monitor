@@ -57,7 +57,7 @@ const ROLE_LABELS: Record<ApiTelegramMessage["sender_role"], string> = {
 const TARGET_CHAT_ID = -1002568478710;
 
 const chipClass = (active: boolean) =>
-  `rounded-lg border px-2.5 py-1.5 text-xs transition ${
+  `monitor-chip rounded-lg border px-2.5 py-1.5 text-xs transition ${
     active
       ? "border-signal-400/30 bg-signal-400/10 text-signal-300"
       : "border-mist-400/15 bg-white/[0.02] text-mist-200 hover:border-mist-400/30"
@@ -151,7 +151,35 @@ export function TimelinePage() {
     );
 
   return (
-    <div>
+    <div className="monitor-workbench monitor-columns">
+      <aside className="monitor-source-panel" aria-label="会话与分区">
+        <div className="monitor-section-heading"><span className="monitor-eyebrow">WORKSPACE</span><h2>会话与分区</h2><p>选择来源，阅读原文</p></div>
+              <div className="monitor-source-choices">
+        <button type="button" aria-pressed={chat === null} onClick={() => setChat(null)} className={chipClass(chat === null)}>
+          全部会话
+        </button>
+        {dialogs.map((dialog) => (
+          <button
+            key={dialog.id}
+            type="button"
+            aria-pressed={chat === dialog.chat_id} onClick={() => { setChat(dialog.chat_id); setTopic(null); }}
+            className={chipClass(chat === dialog.chat_id)}
+          >
+            {dialog.title}
+          </button>
+        ))}
+      </div>
+
+      <div className="monitor-topic-choices" aria-label="分区筛选">
+        <button type="button" aria-pressed={topic === null} onClick={() => setTopic(null)} className={chipClass(topic === null)}>全部分区</button>
+        {topics.filter((item) => item.enabled).map((item) => (
+          <button key={item.id} type="button" aria-pressed={topic === item.topic_id} onClick={() => setTopic(item.topic_id)} className={chipClass(topic === item.topic_id)}>{item.title}</button>
+        ))}
+      </div>
+
+        <p className="monitor-source-footnote">分区来自采集配置。重点动态按固定账号与来源筛选，不以昵称判断身份。</p>
+      </aside>
+      <div className="monitor-thread">
       <PageHeader
         title="发言"
         meta={`${rows.length} 条 · 实时来自 Telegram · ${live.status === "live" ? "已连接" : "未连接"}`}
@@ -162,7 +190,7 @@ export function TimelinePage() {
               <input
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
-                className="w-38 bg-transparent text-xs text-mist-200 outline-none placeholder:text-mist-400/60"
+                className="monitor-search-input bg-transparent text-xs text-mist-200 outline-none placeholder:text-mist-400/60"
                 placeholder="搜索原文或发送者"
                 aria-label="搜索发言"
               />
@@ -179,29 +207,7 @@ export function TimelinePage() {
         }
       />
 
-      <div className="mb-2 flex flex-wrap gap-1.5">
-        <button type="button" onClick={() => setChat(null)} className={chipClass(chat === null)}>
-          全部会话
-        </button>
-        {dialogs.map((dialog) => (
-          <button
-            key={dialog.id}
-            type="button"
-            onClick={() => setChat(dialog.chat_id)}
-            className={chipClass(chat === dialog.chat_id)}
-          >
-            {dialog.title}
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-2 flex flex-wrap gap-1.5" aria-label="分区筛选">
-        <button type="button" aria-pressed={topic === null} onClick={() => setTopic(null)} className={chipClass(topic === null)}>全部分区</button>
-        {topics.filter((item) => item.enabled).map((item) => (
-          <button key={item.id} type="button" aria-pressed={topic === item.topic_id} onClick={() => setTopic(item.topic_id)} className={chipClass(topic === item.topic_id)}>{item.title}</button>
-        ))}
-      </div>
-      <div className="mb-2 flex flex-wrap gap-1.5" aria-label="关注内容">
+      <div className="monitor-focus" aria-label="关注内容">
         {(Object.keys(FOCUS_LABELS) as TelegramFocus[]).map((value) => (
           <button key={value} type="button" aria-pressed={focus === value} onClick={() => setFocus(value)} className={chipClass(focus === value)}>{FOCUS_LABELS[value]}</button>
         ))}
@@ -210,7 +216,7 @@ export function TimelinePage() {
         当前：{FOCUS_LABELS[focus]} · {topic === null ? "全部分区" : topics.find((item) => item.topic_id === topic)?.title || "所选分区"}。
         {focus === "important" ? "仅显示交易区机器人报告、禁言群和聊天群的熬鹰本人发言；消息通知默认不纳入。" : focus === "owner" ? "按固定账号识别本人，不按昵称匹配。" : "包含群友和事务消息，不代表熬鹰观点或交易。"}
       </p>
-      <div className="mb-3 flex flex-wrap items-center gap-4">
+      <div className="monitor-filter-row">
         <div className="flex flex-wrap gap-1.5">
           {(Object.keys(KIND_LABELS) as KindFilter[]).map((value) => (
             <button
@@ -238,12 +244,12 @@ export function TimelinePage() {
       </div>
 
       {error ? (
-        <p className="mb-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+        <p role="alert" className="mb-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {error}
         </p>
       ) : null}
 
-      <section className="panel overflow-hidden rounded-xl">
+      <section className="panel monitor-originals overflow-hidden rounded-xl" aria-label="原文列表" aria-busy={loading}>
         {loading ? (
           <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-mist-400">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -255,7 +261,7 @@ export function TimelinePage() {
               const open = expanded.includes(message.id);
               const hasHistory = message.revisions.length > 0;
               return (
-                <li key={message.id} className="px-4 py-3.5">
+                <li key={message.id} className="monitor-message">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="grid h-5 w-5 place-items-center rounded bg-mist-400/15">
                       <MessageSquare className="h-3 w-3 text-mist-200" />
@@ -324,7 +330,7 @@ export function TimelinePage() {
                     </div>
                   ) : null}
 
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-mist-200">
+                  <p className="monitor-original-text">
                     {message.text || "（无文字内容）"}
                   </p>
                 </li>
@@ -338,6 +344,7 @@ export function TimelinePage() {
           </ul>
         )}
       </section>
+      </div>
     </div>
   );
 }

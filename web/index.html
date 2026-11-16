@@ -9,7 +9,7 @@
       // Apply the saved theme before first paint so a light-theme reload never
       // flashes the dark surface (AppLayout keeps it in sync afterwards).
       (function () {
-        var theme = "dark";
+        var theme = "light";
         try {
           var saved = localStorage.getItem("aoying-theme");
           if (saved === "light" || saved === "dark") theme = saved;
