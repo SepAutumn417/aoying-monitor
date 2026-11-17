@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Eye, RefreshCw, ToggleLeft, ToggleRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import {
@@ -9,28 +9,18 @@ import {
   type ApiTelegramTopic,
 } from "../../lib/api";
 import { useLive } from "../../lib/live";
-import { AoyingPositionCard, type PositionDetail } from "../trading/AoyingPositionCard";
+import { AoyingPositionCard } from "../trading/AoyingPositionCard";
 import { TradingViewChart } from "../trading/TradingViewChart";
-
-const DEFAULT_NVDA: PositionDetail = {
-  id: "nvda-1",
-  symbol: "NVDA USDT",
-  underlying: "NVDA",
-  side: "long",
-  leverage: 5,
-  marginType: "全仓",
-  unrealizedPnl: -8058,
-  roe: -8,
-  positionValueUsdt: 513880,
-  positionQty: 3207,
-  entryPrice: 162.75,
-  markPrice: 160.24,
-  liqPrice: 50.57,
-};
+import {
+  type PositionDetail,
+  DEMO_NVDA_POSITION,
+  type MarketFeedStatus,
+} from "../trading/tradingTypes";
 
 export function DashboardPage() {
   const live = useLive();
-  const [selectedPosition, setSelectedPosition] = useState<PositionDetail>(DEFAULT_NVDA);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<PositionDetail | null>(null);
 
   const [messages, setMessages] = useState<ApiTelegramMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +33,19 @@ export function DashboardPage() {
   const [showTelegramLog, setShowTelegramLog] = useState(true);
 
   const newestEvent = live.events[0]?.id;
+
+  // Toggle demo mode on or off
+  const handleToggleDemoMode = useCallback(() => {
+    setIsDemoMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedPosition(DEMO_NVDA_POSITION);
+      } else {
+        setSelectedPosition(null);
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -90,13 +93,37 @@ export function DashboardPage() {
 
   const reload = useCallback(() => setRefresh((value) => value + 1), []);
 
+  const activePos = isDemoMode ? (selectedPosition || DEMO_NVDA_POSITION) : selectedPosition;
+  const feedStatus: MarketFeedStatus = isDemoMode ? "demo" : "disconnected";
+
   return (
     <div className="aoying-home-view page-home">
-      {/* Page Title */}
+      {/* Page Title & Demo Mode Switch */}
       <div className="page-heading aoying-dashboard-head">
         <div>
           <h1>监控总览</h1>
           <p>Telegram 原文与编辑快照 · 只读监控</p>
+        </div>
+
+        <div className="dashboard-head-actions">
+          <button
+            type="button"
+            className={`demo-mode-toggle-pill ${isDemoMode ? "active" : ""}`}
+            onClick={handleToggleDemoMode}
+            title={isDemoMode ? "关闭演示模式，切回实盘监控状态" : "开启演示模式，查看参考布局与样例"}
+          >
+            {isDemoMode ? (
+              <>
+                <ToggleRight size={18} className="toggle-icon on" />
+                <span>演示模式 · 已开启</span>
+              </>
+            ) : (
+              <>
+                <ToggleLeft size={18} className="toggle-icon off" />
+                <span>演示模式 · 已关闭</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -104,15 +131,19 @@ export function DashboardPage() {
       <div className="aoying-main-grid">
         <section className="aoying-grid-left" aria-label="熬鹰持仓快照">
           <AoyingPositionCard
-            selectedPosition={selectedPosition}
+            selectedPosition={activePos}
             onSelectPosition={setSelectedPosition}
+            isDemoMode={isDemoMode}
+            onToggleDemoMode={handleToggleDemoMode}
           />
         </section>
 
         <section className="aoying-grid-right" aria-label="K线行情">
           <TradingViewChart
-            symbol={`${selectedPosition.underlying} / USDT`}
-            entryPrice={selectedPosition.entryPrice}
+            symbol={activePos ? `${activePos.underlying} / USDT` : "NVDA / USDT"}
+            entryPrice={activePos ? activePos.entryPrice : 162.75}
+            isDemoMode={isDemoMode}
+            feedStatus={feedStatus}
           />
         </section>
       </div>

@@ -20,13 +20,21 @@ import {
   Trash2,
   Type,
   TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import { getCandlesForInterval } from "./candleData";
+import {
+  type MarketFeedStatus,
+  MARKET_STATUS_CONFIGS,
+} from "./tradingTypes";
 
 interface TradingViewChartProps {
   symbol?: string;
   entryPrice?: number;
   theme?: "light" | "dark";
+  isDemoMode?: boolean;
+  feedStatus?: MarketFeedStatus;
+  lastSyncTime?: string;
 }
 
 const INTERVALS = ["1 分钟", "5 分钟", "15 分钟", "30 分钟", "1 小时", "4 小时"];
@@ -45,6 +53,9 @@ export function TradingViewChart({
   symbol = "NVDA / USDT",
   entryPrice = 162.75,
   theme = "light",
+  isDemoMode = false,
+  feedStatus,
+  lastSyncTime,
 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -57,7 +68,19 @@ export function TradingViewChart({
   const [showTweets, setShowTweets] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeTool, setActiveTool] = useState<string>("crosshair");
-  const [lastSyncTime, setLastSyncTime] = useState("13:56:55");
+
+  // Determine current effective feed status
+  const effectiveStatus: MarketFeedStatus =
+    feedStatus || (isDemoMode ? "demo" : "disconnected");
+  const statusConfig = MARKET_STATUS_CONFIGS[effectiveStatus];
+
+  // Static reference time for demo mode or explicit sync time
+  const displaySyncTime =
+    effectiveStatus === "demo"
+      ? (lastSyncTime || "2026-11-16 13:56:55 (静态样例)")
+      : effectiveStatus === "disconnected"
+      ? "行情源未连接 · 无实时推流"
+      : (lastSyncTime || "--:--:--");
 
   const [ohlc, setOhlc] = useState({
     open: 160.03,
@@ -65,17 +88,6 @@ export function TradingViewChart({
     low: 161.53,
     close: 161.64,
   });
-
-  // Keep live sync time updated
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setLastSyncTime(now.toLocaleTimeString("zh-CN", { hour12: false }));
-    };
-    updateTime();
-    const timer = window.setInterval(updateTime, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -273,6 +285,14 @@ export function TradingViewChart({
         </div>
       </div>
 
+      {/* Prominent Demo Mode Alert Banner */}
+      {effectiveStatus === "demo" && (
+        <div className="chart-demo-alert-banner" role="status">
+          <AlertTriangle size={15} className="demo-alert-icon" />
+          <span>演示模式 · 静态模拟行情走势 · 严禁用于实盘交易决策</span>
+        </div>
+      )}
+
       {/* OHLC Bar */}
       <div className="chart-ohlc-bar">
         <span>开 <strong className="ohlc-val">{ohlc.open.toFixed(2)}</strong></span>
@@ -402,9 +422,12 @@ export function TradingViewChart({
         </div>
 
         <div className="chart-controls-right">
-          <span className="live-status-pill">
-            <span className="live-status-dot" />
-            实时行情
+          <span
+            className={`live-status-pill status-${statusConfig.tone}`}
+            title={statusConfig.description}
+          >
+            <span className={`live-status-dot dot-${statusConfig.tone}`} />
+            {statusConfig.label}
           </span>
         </div>
       </div>
@@ -415,7 +438,7 @@ export function TradingViewChart({
           近期通知中暂无该合约操作。选择其他持仓可查看对应行情。 标记时间有延迟，不代表真实成交点。
         </span>
         <span className="chart-footer-meta">
-          TradingView Lightweight Charts™ &nbsp;&nbsp; 行情同步 {lastSyncTime}
+          TradingView Lightweight Charts™ &nbsp;&nbsp; {displaySyncTime}
         </span>
       </div>
     </div>

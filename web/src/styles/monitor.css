@@ -199,6 +199,130 @@
 .aoying-home-view {
   width: 100%;
 }
+.aoying-dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.dashboard-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.demo-mode-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.demo-mode-toggle-pill:hover {
+  border-color: #bbb;
+  color: var(--text);
+}
+.demo-mode-toggle-pill.active {
+  background: #fff8e6;
+  border-color: #f3dc7b;
+  color: #8c6b00;
+}
+:root[data-theme="dark"] .demo-mode-toggle-pill.active {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.4);
+  color: #facc15;
+}
+.demo-mode-toggle-pill .toggle-icon.on {
+  color: #c29910;
+}
+.demo-mode-toggle-pill .toggle-icon.off {
+  color: var(--muted);
+}
+.demo-indicator-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  margin-left: 6px;
+}
+:root[data-theme="dark"] .demo-indicator-pill {
+  background: rgba(234, 179, 8, 0.18);
+  color: #facc15;
+  border-color: rgba(234, 179, 8, 0.3);
+}
+.demo-position-header-alert {
+  background: #fff9db;
+  border: 1px solid #ffe066;
+  color: #7a5800;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+:root[data-theme="dark"] .demo-position-header-alert {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: #facc15;
+}
+.position-empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 20px;
+  text-align: center;
+  background: var(--surface-subtle);
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  margin-top: 18px;
+}
+.position-empty-block .empty-icon-wrap {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+.position-empty-block .empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px 0;
+}
+.position-empty-block .empty-desc {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 280px;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+.position-empty-block .demo-mode-btn {
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--accent-gold);
+  background: var(--accent-yellow);
+  color: #4a3800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.position-empty-block .demo-mode-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
 .aoying-main-grid {
   display: grid;
   grid-template-columns: 410px minmax(0, 1fr);
@@ -646,6 +770,28 @@
   color: var(--muted);
   margin-left: 4px;
 }
+.chart-demo-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #fff8e6;
+  border: 1px solid #f9d870;
+  border-radius: 8px;
+  margin: 10px 0 6px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8c6b00;
+}
+:root[data-theme="dark"] .chart-demo-alert-banner {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: #facc15;
+}
+.demo-alert-icon {
+  flex-shrink: 0;
+  color: #c29910;
+}
 .live-status-pill {
   display: inline-flex;
   align-items: center;
@@ -654,12 +800,43 @@
   font-weight: 600;
   color: #089981;
 }
+.live-status-pill.status-green {
+  color: #089981;
+}
+.live-status-pill.status-amber {
+  color: #b45309;
+}
+:root[data-theme="dark"] .live-status-pill.status-amber {
+  color: #facc15;
+}
+.live-status-pill.status-yellow {
+  color: #ca8a04;
+}
+.live-status-pill.status-gray {
+  color: var(--muted);
+}
 .live-status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: #089981;
   box-shadow: 0 0 0 2px rgba(8, 153, 129, 0.2);
+}
+.live-status-dot.dot-green {
+  background: #089981;
+  box-shadow: 0 0 0 2px rgba(8, 153, 129, 0.2);
+}
+.live-status-dot.dot-amber {
+  background: #d97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+.live-status-dot.dot-yellow {
+  background: #eab308;
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.2);
+}
+.live-status-dot.dot-gray {
+  background: var(--muted);
+  box-shadow: 0 0 0 2px rgba(150, 150, 150, 0.2);
 }
 
 /* Chart Footer bar */
